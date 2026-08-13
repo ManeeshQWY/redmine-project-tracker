@@ -1,4 +1,5 @@
 import { ProjectMeta } from "../types/issue";
+import { ALL_PROJECTS } from "../services/api";
 
 interface Props {
   projects: ProjectMeta[];
@@ -18,6 +19,7 @@ export default function ProjectSelector({ projects, selected, onSelect }: Props)
         <option value="" disabled>
           Select a project…
         </option>
+        <option value={ALL_PROJECTS}>★ All Projects (entire instance)</option>
         {projects.map((p) => (
           <option key={p.identifier} value={p.identifier}>
             {p.parent ? `${p.parent} / ${p.name}` : p.name}

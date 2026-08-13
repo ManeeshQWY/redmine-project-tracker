@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ApiError, CurrentUser, getCurrentUser, getMeta, getProjectIssues, getProjects, logout } from "./services/api";
+import { ALL_PROJECTS, ApiError, CurrentUser, getCurrentUser, getMeta, getProjectIssues, getProjects, logout } from "./services/api";
 import { Issue, MetaResult, ProjectMeta } from "./types/issue";
 import { applyFilters, EMPTY_FILTERS, TicketFilters } from "./utils/filters";
 import { aggregateByStatus, aggregateByTracker, aggregateByPriority, aggregateByTargetVersion } from "./utils/aggregations";
@@ -18,8 +18,9 @@ import ResolutionTimePanel from "./components/ResolutionTimePanel";
 import EstimateVsActualPanel from "./components/EstimateVsActualPanel";
 import ReleaseDashboard from "./components/ReleaseDashboard";
 import QADashboard from "./components/QADashboard";
+import TimeSpentByUserPanel from "./components/TimeSpentByUserPanel";
 
-type Tab = "overview" | "tickets" | "aging" | "release" | "qa";
+type Tab = "overview" | "tickets" | "aging" | "release" | "qa" | "time";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
@@ -27,6 +28,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "aging", label: "Aging & Resolution" },
   { id: "release", label: "Release Dashboard" },
   { id: "qa", label: "QA Dashboard" },
+  { id: "time", label: "Time Spent by User" },
 ];
 
 export default function App() {
@@ -105,6 +107,8 @@ export default function App() {
   const priorityOrder = useMemo(() => (meta ? meta.priorities.map((p) => p.name) : []), [meta]);
 
   const selectedProjectMeta = projects.find((p) => p.identifier === selectedProject);
+  const selectedProjectLabel =
+    selectedProject === ALL_PROJECTS ? "All Projects" : selectedProjectMeta?.name ?? selectedProject ?? "";
 
   if (!authChecked) {
     return <div className="flex min-h-screen items-center justify-center text-sm text-slate-400">Loading…</div>;
@@ -151,13 +155,15 @@ export default function App() {
               lastRefreshed={lastRefreshed}
               loading={loading}
               onRefresh={() => loadIssues(selectedProject, true)}
-              onExport={() => meta && exportToExcel(filteredIssues, meta.redmineBaseUrl, selectedProjectMeta?.name ?? selectedProject)}
+              onExport={() => meta && exportToExcel(filteredIssues, meta.redmineBaseUrl, selectedProjectLabel)}
               exportDisabled={loading || filteredIssues.length === 0}
             />
 
             {loading && issues.length === 0 ? (
               <div className="rounded-lg border border-slate-200 bg-white p-10 text-center text-slate-500">
-                Loading tickets from Redmine — this can take a while for large projects…
+                {selectedProject === ALL_PROJECTS
+                  ? "Loading tickets from every project on the instance — this covers 19,000+ tickets and can take a minute or more…"
+                  : "Loading tickets from Redmine — this can take a while for large projects…"}
               </div>
             ) : (
               <>
@@ -206,6 +212,8 @@ export default function App() {
                 {tab === "release" && <ReleaseDashboard issues={filteredIssues} />}
 
                 {tab === "qa" && <QADashboard issues={filteredIssues} />}
+
+                {tab === "time" && <TimeSpentByUserPanel projectIdentifier={selectedProject} onSessionExpired={() => setUser(null)} />}
               </>
             )}
           </>

@@ -92,3 +92,26 @@ export interface RedmineMembership {
   group?: RedmineNamedRef;
   roles: RedmineNamedRef[];
 }
+
+export interface RedmineTimeEntry {
+  id: number;
+  project: RedmineNamedRef;
+  issue?: { id: number };
+  user: RedmineNamedRef;
+  activity: RedmineNamedRef;
+  hours: number;
+  comments?: string;
+  spent_on: string;
+  created_on: string;
+  updated_on: string;
+}
+
+export interface RedmineCurrentUserResponse {
+  user: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    login: string;
+    mail?: string;
+  };
+}

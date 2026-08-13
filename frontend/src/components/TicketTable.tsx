@@ -11,7 +11,7 @@ interface Props {
 
 const PAGE_SIZES = [25, 50, 100, 200];
 
-const COLUMNS: { field: SortField | null; label: string }[] = [
+const BASE_COLUMNS: { field: SortField | null; label: string }[] = [
   { field: "id", label: "ID" },
   { field: null, label: "Tracker" },
   { field: "status", label: "Status" },
@@ -36,6 +36,15 @@ export default function TicketTable({ issues, redmineBaseUrl, priorityOrder }: P
   const [sort, setSort] = useState<SortState>({ field: "createdOn", direction: "desc" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+
+  // Only show the Project column when the current view actually spans more than one
+  // project (parent + subprojects, or All Projects) — keeps the normal single-project
+  // table uncluttered.
+  const showProjectColumn = useMemo(() => new Set(issues.map((i) => i.project)).size > 1, [issues]);
+  const columns = useMemo(
+    () => (showProjectColumn ? [BASE_COLUMNS[0], { field: "project" as SortField, label: "Project" }, ...BASE_COLUMNS.slice(1)] : BASE_COLUMNS),
+    [showProjectColumn]
+  );
 
   const sorted = useMemo(() => sortIssues(issues, sort, priorityOrder), [issues, sort, priorityOrder]);
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
@@ -71,7 +80,7 @@ export default function TicketTable({ issues, redmineBaseUrl, priorityOrder }: P
         <table className="w-full min-w-[1400px] text-left text-xs">
           <thead className="sticky top-0 z-10 bg-slate-50 text-slate-500">
             <tr>
-              {COLUMNS.map((col) => (
+              {columns.map((col) => (
                 <th
                   key={col.label}
                   className={`whitespace-nowrap px-2 py-2 font-medium ${col.field ? "cursor-pointer select-none hover:text-slate-800" : ""}`}
@@ -85,11 +94,11 @@ export default function TicketTable({ issues, redmineBaseUrl, priorityOrder }: P
           </thead>
           <tbody>
             {pageRows.map((issue) => (
-              <TicketRow key={issue.id} issue={issue} redmineBaseUrl={redmineBaseUrl} />
+              <TicketRow key={issue.id} issue={issue} redmineBaseUrl={redmineBaseUrl} showProjectColumn={showProjectColumn} />
             ))}
             {pageRows.length === 0 && (
               <tr>
-                <td colSpan={COLUMNS.length} className="px-2 py-6 text-center text-slate-400">
+                <td colSpan={columns.length} className="px-2 py-6 text-center text-slate-400">
                   No tickets match the current filters.
                 </td>
               </tr>
@@ -120,7 +129,7 @@ export default function TicketTable({ issues, redmineBaseUrl, priorityOrder }: P
   );
 }
 
-function TicketRow({ issue, redmineBaseUrl }: { issue: Issue; redmineBaseUrl: string }) {
+function TicketRow({ issue, redmineBaseUrl, showProjectColumn }: { issue: Issue; redmineBaseUrl: string; showProjectColumn: boolean }) {
   const link = `${redmineBaseUrl}/issues/${issue.id}`;
   return (
     <tr className="border-t border-slate-100 hover:bg-slate-50">
@@ -129,6 +138,7 @@ function TicketRow({ issue, redmineBaseUrl }: { issue: Issue; redmineBaseUrl: st
           #{issue.id}
         </a>
       </td>
+      {showProjectColumn && <td className="px-2 py-1.5">{blank(issue.project)}</td>}
       <td className="px-2 py-1.5">{blank(issue.tracker)}</td>
       <td className="px-2 py-1.5">{blank(issue.status)}</td>
       <td className="px-2 py-1.5">{blank(issue.priority)}</td>

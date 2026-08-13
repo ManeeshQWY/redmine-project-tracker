@@ -1,10 +1,11 @@
 import { TtlCache, InFlightGuard } from "./cache";
-import { getProjectIssues, getProjects, getStatuses, getTrackers, getPriorities } from "./redmineService";
-import { ProjectIssuesResult, ProjectMeta, StatusMeta, TrackerMeta, PriorityMeta } from "../types/issue";
+import { getProjectIssues, getProjects, getStatuses, getTrackers, getPriorities, getTimeEntries } from "./redmineService";
+import { ProjectIssuesResult, ProjectMeta, StatusMeta, TrackerMeta, PriorityMeta, TimeEntriesResult } from "../types/issue";
 import { config } from "../config";
 
 const ISSUES_TTL_MS = 15 * 60 * 1000; // filters/UI work off this without re-hitting Redmine
 const META_TTL_MS = 60 * 60 * 1000;
+const TIME_ENTRIES_TTL_MS = 15 * 60 * 1000;
 
 // Cache keys are namespaced by Redmine user id, not just project/resource — different
 // accounts can have different project/issue visibility in Redmine, so caching globally
@@ -14,7 +15,9 @@ const projectsCache = new TtlCache<ProjectMeta[]>(META_TTL_MS);
 const statusesCache = new TtlCache<StatusMeta[]>(META_TTL_MS);
 const trackersCache = new TtlCache<TrackerMeta[]>(META_TTL_MS);
 const prioritiesCache = new TtlCache<PriorityMeta[]>(META_TTL_MS);
+const timeEntriesCache = new TtlCache<TimeEntriesResult>(TIME_ENTRIES_TTL_MS);
 const issuesInFlight = new InFlightGuard<ProjectIssuesResult>();
+const timeEntriesInFlight = new InFlightGuard<TimeEntriesResult>();
 
 export async function loadProjects(userId: number, apiKey: string): Promise<ProjectMeta[]> {
   const cached = projectsCache.get(String(userId));
@@ -72,6 +75,39 @@ export async function loadProjectIssues(
     const durationSec = ((Date.now() - start) / 1000).toFixed(1);
     console.log(`[redmine] Retrieved ${result.issues.length} issues for "${projectIdentifier}" across ${totalPages} page(s) in ${durationSec}s`);
     issuesCache.set(cacheKey, result);
+    return result;
+  });
+}
+
+export async function loadTimeEntries(
+  userId: number,
+  apiKey: string,
+  projectIdentifier: string,
+  forceRefresh: boolean
+): Promise<TimeEntriesResult> {
+  const cacheKey = `${userId}:${projectIdentifier}`;
+
+  if (!forceRefresh) {
+    const cached = timeEntriesCache.get(cacheKey);
+    if (cached) {
+      console.log(`[cache] Serving cached time entries for "${projectIdentifier}" (${cached.timeEntries.length} entries, fetched ${cached.fetchedAt})`);
+      return cached;
+    }
+  } else {
+    timeEntriesCache.invalidate(cacheKey);
+  }
+
+  return timeEntriesInFlight.run(cacheKey, async () => {
+    console.log(`[redmine] Fetching all time entries for "${projectIdentifier}"...`);
+    const start = Date.now();
+    let totalPages = 1;
+    const result = await getTimeEntries(projectIdentifier, apiKey, (fetched, total, page, pages) => {
+      totalPages = pages;
+      console.log(`[redmine] Time entries page ${page}/${pages} — ${fetched}/${total} retrieved`);
+    });
+    const durationSec = ((Date.now() - start) / 1000).toFixed(1);
+    console.log(`[redmine] Retrieved ${result.timeEntries.length} time entries for "${projectIdentifier}" across ${totalPages} page(s) in ${durationSec}s`);
+    timeEntriesCache.set(cacheKey, result);
     return result;
   });
 }

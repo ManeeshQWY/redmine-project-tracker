@@ -1,10 +1,13 @@
-import { MetaResult, ProjectIssuesResult, ProjectMeta } from "../types/issue";
+import { MetaResult, ProjectIssuesResult, ProjectMeta, TimeEntriesResult } from "../types/issue";
 
 // All Redmine access goes through our own backend at /api/* (proxied to
 // http://localhost:4000 in dev, see vite.config.ts). The browser never talks
 // to Redmine directly and never stores a raw API key — only an httpOnly
 // session cookie set by the backend after login, hence credentials:"include"
 // on every call.
+
+/** Special project identifier meaning "every project on the instance" — must match backend's ALL_PROJECTS. */
+export const ALL_PROJECTS = "__all__";
 
 export interface CurrentUser {
   name: string;
@@ -76,4 +79,10 @@ export function getMeta(): Promise<MetaResult> {
 export function getProjectIssues(projectIdentifier: string, forceRefresh = false): Promise<ProjectIssuesResult> {
   const query = forceRefresh ? "?refresh=true" : "";
   return getJson<ProjectIssuesResult>(`/api/projects/${encodeURIComponent(projectIdentifier)}/issues${query}`);
+}
+
+/** Not auto-fetched with issues — time entry volume can be very large, so this is called only when the Time Spent by User panel is explicitly opened. */
+export function getTimeEntries(projectIdentifier: string, forceRefresh = false): Promise<TimeEntriesResult> {
+  const query = forceRefresh ? "?refresh=true" : "";
+  return getJson<TimeEntriesResult>(`/api/projects/${encodeURIComponent(projectIdentifier)}/time-entries${query}`);
 }

@@ -1,4 +1,4 @@
-import { Issue } from "../types/issue";
+import { Issue, TimeEntry } from "../types/issue";
 
 export interface CountBucket {
   key: string;
@@ -186,4 +186,35 @@ export function aggregateByQA(issues: Issue[]): QASummaryRow[] {
     map.set(key, row);
   }
   return Array.from(map.values()).sort((a, b) => b.total - a.total);
+}
+
+export interface UserTimeSummaryRow {
+  user: string;
+  totalHours: number;
+  entryCount: number;
+  byActivity: { activity: string; hours: number }[];
+}
+
+/** Aggregates by who actually logged the time entry — includes every logger, not just issue assignees. */
+export function aggregateTimeByUser(timeEntries: TimeEntry[]): UserTimeSummaryRow[] {
+  const map = new Map<string, { totalHours: number; entryCount: number; activityHours: Map<string, number> }>();
+  for (const entry of timeEntries) {
+    const key = entry.user || "(blank)";
+    const row = map.get(key) ?? { totalHours: 0, entryCount: 0, activityHours: new Map<string, number>() };
+    row.totalHours += entry.hours;
+    row.entryCount++;
+    const activityKey = entry.activity || "(blank)";
+    row.activityHours.set(activityKey, (row.activityHours.get(activityKey) ?? 0) + entry.hours);
+    map.set(key, row);
+  }
+  return Array.from(map.entries())
+    .map(([user, row]) => ({
+      user,
+      totalHours: row.totalHours,
+      entryCount: row.entryCount,
+      byActivity: Array.from(row.activityHours.entries())
+        .map(([activity, hours]) => ({ activity, hours }))
+        .sort((a, b) => b.hours - a.hours),
+    }))
+    .sort((a, b) => b.totalHours - a.totalHours);
 }

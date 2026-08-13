@@ -7,6 +7,7 @@ import { config } from "./config";
 import { authRouter } from "./routes/auth";
 import { projectsRouter } from "./routes/projects";
 import { issuesRouter } from "./routes/issues";
+import { timeEntriesRouter } from "./routes/timeEntries";
 import { metaRouter } from "./routes/meta";
 import { requireSession } from "./middleware/requireSession";
 import { errorHandler } from "./middleware/errorHandler";
@@ -38,6 +39,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/projects", requireSession, projectsRouter);
 app.use("/api/projects", requireSession, issuesRouter);
+app.use("/api/projects", requireSession, timeEntriesRouter);
 app.use("/api/meta", requireSession, metaRouter);
 
 // Single-process deployment: serve the built frontend (frontend/npm run build → dist/)

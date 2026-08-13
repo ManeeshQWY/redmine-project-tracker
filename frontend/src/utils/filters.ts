@@ -7,6 +7,7 @@ export interface TicketFilters {
   assignee: string;
   targetVersion: string;
   author: string;
+  project: string; // relevant when multiple projects are in view (parent+subprojects, or All Projects)
   dateFrom: string; // ISO date, applies to createdOn
   dateTo: string;
   search: string;
@@ -19,6 +20,7 @@ export const EMPTY_FILTERS: TicketFilters = {
   assignee: "",
   targetVersion: "",
   author: "",
+  project: "",
   dateFrom: "",
   dateTo: "",
   search: "",
@@ -36,6 +38,7 @@ export function applyFilters(issues: Issue[], filters: TicketFilters): Issue[] {
     if (filters.assignee && (issue.assignedTo ?? "(Unassigned)") !== filters.assignee) return false;
     if (filters.targetVersion && (issue.targetVersion ?? "No Target Version") !== filters.targetVersion) return false;
     if (filters.author && issue.author !== filters.author) return false;
+    if (filters.project && issue.project !== filters.project) return false;
 
     if (dateFrom || dateTo) {
       const created = new Date(issue.createdOn);
@@ -62,6 +65,7 @@ export function applyFilters(issues: Issue[], filters: TicketFilters): Issue[] {
 
 export type SortField =
   | "id"
+  | "project"
   | "createdOn"
   | "updatedOn"
   | "dueDate"

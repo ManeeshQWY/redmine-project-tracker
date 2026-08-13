@@ -1,5 +1,5 @@
-import { RedmineIssue, RedmineCustomField } from "../types/redmine";
-import { CustomFieldValue, Issue } from "../types/issue";
+import { RedmineIssue, RedmineCustomField, RedmineTimeEntry } from "../types/redmine";
+import { CustomFieldValue, Issue, TimeEntry } from "../types/issue";
 
 // Known custom fields we surface as first-class columns. Matched by NAME
 // (case-insensitive), never by hardcoded id, since custom field ids are
@@ -79,5 +79,18 @@ export function transformIssue(raw: RedmineIssue, userMap: Map<number, string>):
     additionalAssignee: additionalAssigneeField ? resolveCustomFieldDisplay(additionalAssigneeField.value, userMap) : null,
     estimatedTimeForQA: estimatedQAField ? resolveCustomFieldDisplay(estimatedQAField.value, userMap) : null,
     customFields,
+  };
+}
+
+export function transformTimeEntry(raw: RedmineTimeEntry): TimeEntry {
+  return {
+    id: raw.id,
+    project: raw.project?.name ?? "",
+    issueId: raw.issue?.id ?? null,
+    user: raw.user?.name ?? "",
+    activity: raw.activity?.name ?? "",
+    hours: raw.hours,
+    comments: blank(raw.comments ?? null),
+    spentOn: raw.spent_on,
   };
 }

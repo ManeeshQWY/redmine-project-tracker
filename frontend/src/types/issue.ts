@@ -73,3 +73,22 @@ export interface MetaResult {
   priorities: PriorityMeta[];
   redmineBaseUrl: string;
 }
+
+/** Who actually logged time, not who an issue is assigned to. */
+export interface TimeEntry {
+  id: number;
+  project: string;
+  issueId: number | null;
+  user: string;
+  activity: string;
+  hours: number;
+  comments: string | null;
+  spentOn: string;
+}
+
+export interface TimeEntriesResult {
+  timeEntries: TimeEntry[];
+  totalCount: number;
+  durationMs: number;
+  fetchedAt: string;
+}

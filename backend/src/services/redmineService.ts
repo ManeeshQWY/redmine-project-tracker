@@ -1,5 +1,5 @@
 import { redmineGet, fetchAllPaginated } from "./redmineClient";
-import { transformIssue } from "./transform";
+import { transformIssue, transformTimeEntry } from "./transform";
 import {
   RedmineProject,
   RedmineStatus,
@@ -7,8 +7,20 @@ import {
   RedminePriority,
   RedmineIssue,
   RedmineMembership,
+  RedmineTimeEntry,
 } from "../types/redmine";
-import { Issue, ProjectMeta, StatusMeta, TrackerMeta, PriorityMeta, ProjectIssuesResult } from "../types/issue";
+import {
+  Issue,
+  ProjectMeta,
+  StatusMeta,
+  TrackerMeta,
+  PriorityMeta,
+  ProjectIssuesResult,
+  TimeEntriesResult,
+} from "../types/issue";
+
+/** Special pseudo project identifier meaning "every project on the instance". Never sent to Redmine directly — it just means "omit project_id". */
+export const ALL_PROJECTS = "__all__";
 
 export interface CurrentRedmineUser {
   id: number;
@@ -70,23 +82,55 @@ export async function getProjectUserMap(projectIdentifier: string, apiKey: strin
   return map;
 }
 
+/**
+ * Union of every project's membership map — used for the "All Projects" view,
+ * where a single project's memberships aren't enough to resolve every
+ * custom-field user id that might appear. One request per project, capped at
+ * 4 concurrent, and cached by the caller (dataStore) for an hour so this only
+ * actually hits Redmine occasionally.
+ */
+export async function getGlobalUserMap(apiKey: string): Promise<Map<number, string>> {
+  const projects = await getProjects(apiKey);
+  const merged = new Map<number, string>();
+  const CONCURRENCY = 4;
+  let cursor = 0;
+
+  async function worker() {
+    while (cursor < projects.length) {
+      const project = projects[cursor++];
+      try {
+        const map = await getProjectUserMap(project.identifier, apiKey);
+        for (const [id, name] of map) merged.set(id, name);
+      } catch (err) {
+        console.error(`[redmine] Failed to load memberships for "${project.identifier}": ${err}`);
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, projects.length) }, worker));
+  return merged;
+}
+
+/**
+ * Fetches all issues for a single project (subprojects are included
+ * automatically by Redmine), or for the whole instance when projectIdentifier
+ * is null/ALL_PROJECTS.
+ */
 export async function getProjectIssues(
-  projectIdentifier: string,
+  projectIdentifier: string | null,
   apiKey: string,
   onProgress?: (fetched: number, total: number, page: number, totalPages: number) => void
 ): Promise<ProjectIssuesResult> {
   const start = Date.now();
+  const isAllProjects = !projectIdentifier || projectIdentifier === ALL_PROJECTS;
+  const path = isAllProjects
+    ? "/issues.json?status_id=*"
+    : `/issues.json?project_id=${encodeURIComponent(projectIdentifier)}&status_id=*`;
 
   const [rawIssues, userMap] = await Promise.all([
-    fetchAllPaginated<RedmineIssue>(
-      `/issues.json?project_id=${encodeURIComponent(projectIdentifier)}&status_id=*`,
-      "issues",
-      apiKey,
-      100,
-      onProgress
-    ),
-    getProjectUserMap(projectIdentifier, apiKey).catch((err) => {
-      console.error(`[redmine] Failed to load project memberships for user-id resolution: ${err}`);
+    fetchAllPaginated<RedmineIssue>(path, "issues", apiKey, 100, onProgress),
+    (isAllProjects ? getGlobalUserMap(apiKey) : getProjectUserMap(projectIdentifier!, apiKey)).catch((err) => {
+      console.error(`[redmine] Failed to load memberships for user-id resolution: ${err}`);
       return new Map<number, string>();
     }),
   ]);
@@ -97,6 +141,32 @@ export async function getProjectIssues(
     issues,
     totalCount: rawIssues.length,
     fetchedCount: issues.length,
+    durationMs: Date.now() - start,
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Fetches time entries (who actually logged time, not just who an issue is
+ * assigned to) for a single project or the whole instance. Volume can be very
+ * large (tens of thousands for "All Projects"), so callers should treat this
+ * as an explicit, on-demand action rather than something to auto-fetch.
+ */
+export async function getTimeEntries(
+  projectIdentifier: string | null,
+  apiKey: string,
+  onProgress?: (fetched: number, total: number, page: number, totalPages: number) => void
+): Promise<TimeEntriesResult> {
+  const start = Date.now();
+  const isAllProjects = !projectIdentifier || projectIdentifier === ALL_PROJECTS;
+  const path = isAllProjects ? "/time_entries.json" : `/time_entries.json?project_id=${encodeURIComponent(projectIdentifier)}`;
+
+  const rawEntries = await fetchAllPaginated<RedmineTimeEntry>(path, "time_entries", apiKey, 100, onProgress);
+  const timeEntries = rawEntries.map(transformTimeEntry);
+
+  return {
+    timeEntries,
+    totalCount: timeEntries.length,
     durationMs: Date.now() - start,
     fetchedAt: new Date().toISOString(),
   };

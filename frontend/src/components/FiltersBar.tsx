@@ -13,6 +13,7 @@ function uniqueSorted(values: (string | null)[], fallback: string): string[] {
 }
 
 export default function FiltersBar({ issues, filters, onChange }: Props) {
+  const projectsInView = uniqueSorted(issues.map((i) => i.project), "(blank)");
   const statuses = uniqueSorted(issues.map((i) => i.status), "(blank)");
   const trackers = uniqueSorted(issues.map((i) => i.tracker), "(blank)");
   const priorities = uniqueSorted(issues.map((i) => i.priority), "(blank)");
@@ -28,6 +29,17 @@ export default function FiltersBar({ issues, filters, onChange }: Props) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-end gap-3">
+        {projectsInView.length > 1 && (
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-medium text-slate-500">Project</label>
+            <select className={selectCls} value={filters.project} onChange={(e) => set("project", e.target.value)}>
+              <option value="">All</option>
+              {projectsInView.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="flex flex-col gap-1">
           <label className="text-[11px] font-medium text-slate-500">Status</label>
           <select className={selectCls} value={filters.status} onChange={(e) => set("status", e.target.value)}>

@@ -1,10 +1,20 @@
 # Redmine Project Tracker
 
 An internal ticket-tracking dashboard for `https://support.qwysoft.com`. Pick a Redmine
-project, and get a full ticket table (search/filter/sort), a KPI dashboard, aging &
-resolution-time analytics, estimated-vs-actual hours, a release/version summary, a QA
-summary, and an Excel export — all backed by the real Redmine REST API with full
-pagination (no "first 100 tickets" truncation).
+project (or **★ All Projects** to see the whole instance at once), and get a full ticket
+table (search/filter/sort, with a Project column/filter whenever more than one project is
+in view), a KPI dashboard, aging & resolution-time analytics, estimated-vs-actual hours, a
+release/version summary, a QA summary, a **Time Spent by User** report (every logger, not
+just issue assignees), and an Excel export — all backed by the real Redmine REST API with
+full pagination (no "first 100 tickets" truncation).
+
+Note: Redmine already includes subproject tickets automatically when you pick a parent
+project (e.g. "QWQER DMS - INDIA" also returns its child projects' tickets) — no separate
+setting needed for that. **All Projects** is for going further than that: every project on
+the instance in one view, confirmed at ~19,600+ tickets for this instance, so it takes
+noticeably longer to load than a single project. **Time Spent by User** is loaded on
+demand (via an explicit "Load Time Data" button) rather than automatically, since time
+entry volume can be very large (16,000+ for one mid-size project, more for All Projects).
 
 ## Architecture
 
@@ -162,6 +172,16 @@ Captured by live inspection of `support.qwysoft.com` before writing any code (se
 - Trackers, priorities, and custom field ids/names are instance-specific — the app matches
   custom fields by **name** (case-insensitive), never by hardcoded id, so it keeps working
   if field ids change.
+- **`project_id` on `/issues.json` already includes subprojects.** Confirmed by comparing
+  a parent project (17,354 tickets) against one of its children fetched alone (2,332) —
+  Redmine rolls subprojects up automatically, no extra parameter needed.
+- **`/issues.json` and `/time_entries.json` without a `project_id` return every project the
+  API key can see** — this is how "All Projects" works. Confirmed at 19,639 tickets across
+  the whole instance at the time of testing.
+- **Who actually logged time ≠ who an issue is assigned to.** `/time_entries.json` returns
+  individual log entries with their own `user` field, separate from `Issue.assignedTo` —
+  used for the "Time Spent by User" report so effort by any contributor is visible, not
+  just the assignee's.
 
 ## Assumptions
 
@@ -187,6 +207,11 @@ Captured by live inspection of `support.qwysoft.com` before writing any code (se
   virtualized scroll list; this comfortably handles the ~2,300-10,000+ ticket range
   targeted by the spec without an extra dependency, but a true virtualized grid would
   scale further if a single project reaches tens of thousands of tickets.
+- **All Projects and Time Spent by User can be slow and put more load on Redmine** than a
+  single-project view — All Projects fetches every ticket on the instance (tens of
+  thousands), and Time Spent by User is deliberately not auto-fetched for that reason.
+  Both still use the same capped-concurrency (4 parallel requests) paginator as everything
+  else, just over more pages.
 - Excel export runs in the browser (ExcelJS) using already-loaded data, so it reflects
   whatever filters are active in the Ticket Table tab at export time — very large exports
   (10,000+ rows) may take a few seconds to generate client-side.
