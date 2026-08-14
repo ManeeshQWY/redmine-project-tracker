@@ -21,12 +21,12 @@ export default function RefreshBar({ lastRefreshed, loading, onRefresh, onExport
       <button
         onClick={onExport}
         disabled={exportDisabled}
-        className="rounded-md border border-slate-300 bg-white px-4 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+        className="rounded-md border border-slate-300 bg-white px-4 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
       >
         Export to Excel
       </button>
       {lastRefreshed && (
-        <span className="text-xs text-slate-500">Last Refreshed: {formatDateTime(lastRefreshed)}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">Last Refreshed: {formatDateTime(lastRefreshed)}</span>
       )}
     </div>
   );

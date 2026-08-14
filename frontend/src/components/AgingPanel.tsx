@@ -18,11 +18,11 @@ export default function AgingPanel({ issues, redmineBaseUrl }: { issues: Issue[]
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <BreakdownChart title="Ticket Aging (Open Tickets)" data={buckets} />
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h3 className="mb-3 text-sm font-semibold text-slate-700">Oldest Open Tickets</h3>
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Oldest Open Tickets</h3>
         <div className="max-h-80 overflow-auto">
           <table className="w-full text-left text-xs">
-            <thead className="sticky top-0 bg-slate-50 text-slate-500">
+            <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               <tr>
                 <th className="px-2 py-1.5">ID</th>
                 <th className="px-2 py-1.5">Subject</th>
@@ -33,8 +33,8 @@ export default function AgingPanel({ issues, redmineBaseUrl }: { issues: Issue[]
             </thead>
             <tbody>
               {oldestOpen.map(({ issue, age }) => (
-                <tr key={issue.id} className="border-t border-slate-100">
-                  <td className="px-2 py-1.5 font-medium text-brand-700">
+                <tr key={issue.id} className="border-t border-slate-100 dark:border-slate-800">
+                  <td className="px-2 py-1.5 font-medium text-brand-700 dark:text-brand-500">
                     <a href={`${redmineBaseUrl}/issues/${issue.id}`} target="_blank" rel="noreferrer noopener" className="hover:underline">
                       #{issue.id}
                     </a>
@@ -47,7 +47,7 @@ export default function AgingPanel({ issues, redmineBaseUrl }: { issues: Issue[]
               ))}
               {oldestOpen.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-2 py-4 text-center text-slate-400">No open tickets.</td>
+                  <td colSpan={5} className="px-2 py-4 text-center text-slate-400 dark:text-slate-500">No open tickets.</td>
                 </tr>
               )}
             </tbody>

@@ -43,17 +43,17 @@ export default function TimeSpentByUserPanel({ projectIdentifier, onSessionExpir
 
   if (timeEntries === null) {
     return (
-      <div className="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center">
-        <p className="mb-3 text-sm text-slate-600">
+      <div className="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-700 dark:bg-slate-900">
+        <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
           Shows total hours logged by <span className="font-medium">every user who logged time</span> on this
           project&apos;s issues — not just the person an issue is assigned to.
         </p>
-        <p className="mb-4 text-xs text-slate-400">
+        <p className="mb-4 text-xs text-slate-400 dark:text-slate-500">
           {projectIdentifier === ALL_PROJECTS
             ? "This covers every time entry across the whole instance and can take a minute or more to load."
             : "This can take a few seconds to load, depending on how many time entries the project has."}
         </p>
-        {error && <p className="mb-3 text-xs text-rose-600">{error}</p>}
+        {error && <p className="mb-3 text-xs text-rose-600 dark:text-rose-400">{error}</p>}
         <button
           onClick={() => load(false)}
           disabled={loading}
@@ -69,11 +69,11 @@ export default function TimeSpentByUserPanel({ projectIdentifier, onSessionExpir
   const grandTotal = rows.reduce((sum, r) => sum + r.totalHours, 0);
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-slate-700">Time Spent by User</h3>
-          <p className="text-xs text-slate-400">
+          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Time Spent by User</h3>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
             {timeEntries.length.toLocaleString()} time entries · {formatHours(grandTotal)}h total
             {fetchedAt && ` · loaded ${formatDateTime(fetchedAt)}`}
           </p>
@@ -81,7 +81,7 @@ export default function TimeSpentByUserPanel({ projectIdentifier, onSessionExpir
         <button
           onClick={() => load(true)}
           disabled={loading}
-          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-60"
+          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
         >
           {loading ? "Refreshing…" : "Refresh Time Data"}
         </button>
@@ -89,7 +89,7 @@ export default function TimeSpentByUserPanel({ projectIdentifier, onSessionExpir
 
       <div className="max-h-[480px] overflow-auto">
         <table className="w-full text-left text-xs">
-          <thead className="sticky top-0 bg-slate-50 text-slate-500">
+          <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <tr>
               <th className="px-2 py-1.5">User</th>
               <th className="px-2 py-1.5 text-right">Total Hours</th>
@@ -99,18 +99,18 @@ export default function TimeSpentByUserPanel({ projectIdentifier, onSessionExpir
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.user} className="border-t border-slate-100">
+              <tr key={r.user} className="border-t border-slate-100 dark:border-slate-800">
                 <td className="px-2 py-1.5">{r.user}</td>
                 <td className="px-2 py-1.5 text-right font-medium">{formatHours(r.totalHours)}</td>
                 <td className="px-2 py-1.5 text-right">{r.entryCount}</td>
-                <td className="px-2 py-1.5 text-slate-500">
+                <td className="px-2 py-1.5 text-slate-500 dark:text-slate-400">
                   {r.byActivity.map((a) => `${a.activity}: ${formatHours(a.hours)}h`).join(", ")}
                 </td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-2 py-6 text-center text-slate-400">
+                <td colSpan={4} className="px-2 py-6 text-center text-slate-400 dark:text-slate-500">
                   No time entries found for this project.
                 </td>
               </tr>

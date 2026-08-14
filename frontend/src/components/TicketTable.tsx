@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Issue } from "../types/issue";
 import { SortField, SortState, sortIssues } from "../utils/filters";
 import { blank, formatDate, formatHours } from "../utils/format";
+import { PriorityBadge, StatusBadge } from "./Badge";
 
 interface Props {
   issues: Issue[];
@@ -32,6 +33,11 @@ const BASE_COLUMNS: { field: SortField | null; label: string }[] = [
   { field: null, label: "Assigned QA" },
 ];
 
+// ID column is pinned during horizontal scroll (18 columns is wide) — needs a solid
+// background matching the row/header so scrolled-under content doesn't show through.
+const STICKY_ID_CELL = "sticky left-0 z-[1] bg-white dark:bg-slate-900 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]";
+const STICKY_ID_HEADER = "sticky left-0 z-20 bg-slate-50 dark:bg-slate-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]";
+
 export default function TicketTable({ issues, redmineBaseUrl, priorityOrder }: Props) {
   const [sort, setSort] = useState<SortState>({ field: "createdOn", direction: "desc" });
   const [page, setPage] = useState(1);
@@ -57,13 +63,13 @@ export default function TicketTable({ issues, redmineBaseUrl, priorityOrder }: P
   };
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2 text-xs text-slate-500">
+    <div className="rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
         <span>{sorted.length.toLocaleString()} tickets</span>
         <div className="flex items-center gap-2">
           <span>Rows per page:</span>
           <select
-            className="rounded border border-slate-300 px-1.5 py-1"
+            className="rounded border border-slate-300 bg-white px-1.5 py-1 dark:border-slate-600 dark:bg-slate-800"
             value={pageSize}
             onChange={(e) => {
               setPageSize(Number(e.target.value));
@@ -78,12 +84,14 @@ export default function TicketTable({ issues, redmineBaseUrl, priorityOrder }: P
       </div>
       <div className="overflow-auto" style={{ maxHeight: 560 }}>
         <table className="w-full min-w-[1400px] text-left text-xs">
-          <thead className="sticky top-0 z-10 bg-slate-50 text-slate-500">
+          <thead className="sticky top-0 z-10 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <tr>
-              {columns.map((col) => (
+              {columns.map((col, idx) => (
                 <th
                   key={col.label}
-                  className={`whitespace-nowrap px-2 py-2 font-medium ${col.field ? "cursor-pointer select-none hover:text-slate-800" : ""}`}
+                  className={`whitespace-nowrap px-2 py-2 font-medium ${col.field ? "cursor-pointer select-none hover:text-slate-800 dark:hover:text-slate-200" : ""} ${
+                    idx === 0 ? STICKY_ID_HEADER : ""
+                  }`}
                   onClick={() => col.field && toggleSort(col.field)}
                 >
                   {col.label}
@@ -106,21 +114,21 @@ export default function TicketTable({ issues, redmineBaseUrl, priorityOrder }: P
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between border-t border-slate-200 px-4 py-2 text-xs text-slate-500">
+      <div className="flex items-center justify-between border-t border-slate-200 px-4 py-2 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
         <span>
           Page {currentPage} of {totalPages}
         </span>
         <div className="flex gap-1">
-          <button className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40" disabled={currentPage <= 1} onClick={() => setPage(1)}>
+          <button className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40 dark:border-slate-600" disabled={currentPage <= 1} onClick={() => setPage(1)}>
             « First
           </button>
-          <button className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40" disabled={currentPage <= 1} onClick={() => setPage((p) => p - 1)}>
+          <button className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40 dark:border-slate-600" disabled={currentPage <= 1} onClick={() => setPage((p) => p - 1)}>
             ‹ Prev
           </button>
-          <button className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40" disabled={currentPage >= totalPages} onClick={() => setPage((p) => p + 1)}>
+          <button className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40 dark:border-slate-600" disabled={currentPage >= totalPages} onClick={() => setPage((p) => p + 1)}>
             Next ›
           </button>
-          <button className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40" disabled={currentPage >= totalPages} onClick={() => setPage(totalPages)}>
+          <button className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40 dark:border-slate-600" disabled={currentPage >= totalPages} onClick={() => setPage(totalPages)}>
             Last »
           </button>
         </div>
@@ -132,16 +140,20 @@ export default function TicketTable({ issues, redmineBaseUrl, priorityOrder }: P
 function TicketRow({ issue, redmineBaseUrl, showProjectColumn }: { issue: Issue; redmineBaseUrl: string; showProjectColumn: boolean }) {
   const link = `${redmineBaseUrl}/issues/${issue.id}`;
   return (
-    <tr className="border-t border-slate-100 hover:bg-slate-50">
-      <td className="px-2 py-1.5 font-medium text-brand-700">
+    <tr className="border-t border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60">
+      <td className={`px-2 py-1.5 font-medium text-brand-700 dark:text-brand-500 ${STICKY_ID_CELL}`}>
         <a href={link} target="_blank" rel="noreferrer noopener" className="hover:underline">
           #{issue.id}
         </a>
       </td>
       {showProjectColumn && <td className="px-2 py-1.5">{blank(issue.project)}</td>}
       <td className="px-2 py-1.5">{blank(issue.tracker)}</td>
-      <td className="px-2 py-1.5">{blank(issue.status)}</td>
-      <td className="px-2 py-1.5">{blank(issue.priority)}</td>
+      <td className="px-2 py-1.5">
+        <StatusBadge status={issue.status} isClosed={issue.statusIsClosed} />
+      </td>
+      <td className="px-2 py-1.5">
+        <PriorityBadge priority={issue.priority} />
+      </td>
       <td className="px-2 py-1.5">{blank(issue.author)}</td>
       <td className="max-w-[280px] truncate px-2 py-1.5" title={issue.subject}>
         <a href={link} target="_blank" rel="noreferrer noopener" className="hover:underline">

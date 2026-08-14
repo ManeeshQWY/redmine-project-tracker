@@ -13,11 +13,11 @@ export default function AssigneeSummaryTable({ issues }: { issues: Issue[] }) {
   }, [issues, sortKey]);
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">Assignee Summary</h3>
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Assignee Summary</h3>
         <select
-          className="rounded border border-slate-300 px-2 py-1 text-xs"
+          className="rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800"
           value={sortKey}
           onChange={(e) => setSortKey(e.target.value as SortKey)}
         >
@@ -29,7 +29,7 @@ export default function AssigneeSummaryTable({ issues }: { issues: Issue[] }) {
       </div>
       <div className="max-h-80 overflow-auto">
         <table className="w-full text-left text-xs">
-          <thead className="sticky top-0 bg-slate-50 text-slate-500">
+          <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <tr>
               <th className="px-2 py-1.5">Assignee</th>
               <th className="px-2 py-1.5 text-right">Total</th>
@@ -40,7 +40,7 @@ export default function AssigneeSummaryTable({ issues }: { issues: Issue[] }) {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.assignee} className="border-t border-slate-100">
+              <tr key={r.assignee} className="border-t border-slate-100 dark:border-slate-800">
                 <td className="px-2 py-1.5">{r.assignee}</td>
                 <td className="px-2 py-1.5 text-right">{r.total}</td>
                 <td className="px-2 py-1.5 text-right">{r.open}</td>

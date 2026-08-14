@@ -3,8 +3,12 @@ import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAx
 import { Issue } from "../types/issue";
 import { estimateVsActual } from "../utils/aggregations";
 import { formatHours } from "../utils/format";
+import { chartTheme, useTheme } from "../theme";
 
 export default function EstimateVsActualPanel({ issues }: { issues: Issue[] }) {
+  const { isDark } = useTheme();
+  const t = chartTheme(isDark);
+
   const rows = useMemo(() => {
     const withEstimate = issues
       .map((i) => ({ issue: i, ...estimateVsActual(i) }))
@@ -34,8 +38,8 @@ export default function EstimateVsActualPanel({ issues }: { issues: Issue[] }) {
   const variancePercent = totals.estimated === 0 ? null : (variance / totals.estimated) * 100;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="mb-3 text-sm font-semibold text-slate-700">Estimated vs Actual Hours (by Tracker)</h3>
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Estimated vs Actual Hours (by Tracker)</h3>
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat label="Estimated Hours" value={formatHours(totals.estimated)} />
         <Stat label="Actual Hours" value={formatHours(totals.actual)} />
@@ -45,26 +49,32 @@ export default function EstimateVsActualPanel({ issues }: { issues: Issue[] }) {
       <div style={{ width: "100%", height: Math.max(200, rows.chartData.length * 40) }}>
         <ResponsiveContainer>
           <BarChart data={rows.chartData} layout="vertical" margin={{ left: 8, right: 24 }}>
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-            <XAxis type="number" tick={{ fontSize: 11 }} />
-            <YAxis type="category" dataKey="tracker" width={100} tick={{ fontSize: 11 }} />
-            <Tooltip formatter={(v: number) => v.toFixed(1)} />
-            <Legend />
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={t.grid} />
+            <XAxis type="number" tick={{ fontSize: 11, fill: t.tick }} />
+            <YAxis type="category" dataKey="tracker" width={100} tick={{ fontSize: 11, fill: t.tick }} />
+            <Tooltip
+              formatter={(v: number) => v.toFixed(1)}
+              contentStyle={{ backgroundColor: t.tooltipBg, borderColor: t.tooltipBorder, color: t.tooltipText, fontSize: 12 }}
+              labelStyle={{ color: t.tooltipText }}
+            />
+            <Legend wrapperStyle={{ fontSize: 12, color: t.tick }} />
             <Bar dataKey="estimated" name="Estimated" fill="#2563eb" radius={[0, 4, 4, 0]} />
             <Bar dataKey="actual" name="Actual" fill="#059669" radius={[0, 4, 4, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
-      {rows.withEstimate.length === 0 && <p className="mt-2 text-xs text-slate-400">No tickets with both estimated and actual hours.</p>}
+      {rows.withEstimate.length === 0 && (
+        <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">No tickets with both estimated and actual hours.</p>
+      )}
     </div>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-center">
-      <div className="text-[11px] uppercase text-slate-500">{label}</div>
-      <div className="text-lg font-semibold text-slate-800">{value}</div>
+    <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-center dark:border-slate-700 dark:bg-slate-800">
+      <div className="text-[11px] uppercase text-slate-500 dark:text-slate-400">{label}</div>
+      <div className="text-lg font-semibold text-slate-800 dark:text-slate-100">{value}</div>
     </div>
   );
 }

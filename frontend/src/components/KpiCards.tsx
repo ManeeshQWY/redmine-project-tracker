@@ -7,9 +7,9 @@ interface Props {
 
 function Card({ label, value, tone }: { label: string; value: number; tone?: string }) {
   return (
-    <div className="flex-1 min-w-[140px] rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
-      <div className={`mt-1 text-2xl font-semibold ${tone ?? "text-slate-800"}`}>{value.toLocaleString()}</div>
+    <div className="flex-1 min-w-[140px] rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</div>
+      <div className={`mt-1 text-2xl font-semibold ${tone ?? "text-slate-800 dark:text-slate-100"}`}>{value.toLocaleString()}</div>
     </div>
   );
 }
