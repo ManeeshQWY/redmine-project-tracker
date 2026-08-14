@@ -7,8 +7,8 @@ export const projectsRouter = Router();
 projectsRouter.get(
   "/",
   asyncHandler(async (req, res) => {
-    const { apiKey, user } = req.session!;
-    const projects = await loadProjects(user.id, apiKey);
+    const { apiKey } = req.session!;
+    const projects = await loadProjects(apiKey);
     res.json({ projects });
   })
 );

@@ -12,8 +12,8 @@ timeEntriesRouter.get(
   asyncHandler(async (req, res) => {
     const { projectIdentifier } = req.params;
     const forceRefresh = req.query.refresh === "true";
-    const { apiKey, user } = req.session!;
-    const result = await loadTimeEntries(user.id, apiKey, projectIdentifier, forceRefresh);
+    const { apiKey } = req.session!;
+    const result = await loadTimeEntries(apiKey, projectIdentifier, forceRefresh);
     res.json(result);
   })
 );

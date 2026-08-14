@@ -2,6 +2,7 @@ import path from "path";
 import fs from "fs";
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import cookieParser from "cookie-parser";
 import { config } from "./config";
 import { authRouter } from "./routes/auth";
@@ -24,6 +25,9 @@ app.use(
     credentials: true,
   })
 );
+// Ticket-list responses can be several MB of JSON (e.g. "All Projects"); gzip shrinks
+// that dramatically before it goes over the network, at a small CPU cost per request.
+app.use(compression());
 app.use(express.json());
 app.use(cookieParser());
 

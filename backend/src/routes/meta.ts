@@ -7,8 +7,8 @@ export const metaRouter = Router();
 metaRouter.get(
   "/",
   asyncHandler(async (req, res) => {
-    const { apiKey, user } = req.session!;
-    const meta = await loadMeta(user.id, apiKey);
+    const { apiKey } = req.session!;
+    const meta = await loadMeta(apiKey);
     res.json(meta);
   })
 );

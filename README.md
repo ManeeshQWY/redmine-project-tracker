@@ -198,6 +198,15 @@ Captured by live inspection of `support.qwysoft.com` before writing any code (se
 - Any Redmine account that can authenticate (`/users/current.json`) is accepted — the app
   doesn't restrict logins to a particular group/role; it relies on each user's own Redmine
   permissions to determine what projects/issues they can see.
+- **Issue/time-entry/meta caches are shared across all logged-in users, keyed only by
+  project** (not per-user) — this assumes everyone on the instance has the same
+  project/issue visibility, which is true for a small internal team without per-project
+  role restrictions. Whichever user's request first populates a project's cache determines
+  what every other user sees from it until it expires (15 min for tickets/time entries, 1h
+  for statuses/trackers/priorities/projects) — Redmine access isn't re-checked on a cache
+  hit. This trades a small amount of access-control precision for a roughly N-fold
+  reduction in memory use with N concurrent users viewing the same project, which matters
+  on a memory-constrained free-tier host.
 
 ## Known limitations
 
@@ -215,6 +224,9 @@ Captured by live inspection of `support.qwysoft.com` before writing any code (se
 - Excel export runs in the browser (ExcelJS) using already-loaded data, so it reflects
   whatever filters are active in the Ticket Table tab at export time — very large exports
   (10,000+ rows) may take a few seconds to generate client-side.
+- API responses are gzip-compressed (via the `compression` middleware) to reduce transfer
+  time for large payloads like "All Projects," at a small CPU cost per request — worth
+  keeping in mind given the free tier's very limited CPU allowance.
 - Login accepts any valid Redmine account with no additional allowlist/role check — access
   control is entirely delegated to each user's own Redmine permissions. If you need to
   restrict who can use the *app* itself (separate from what they can see in Redmine), that
