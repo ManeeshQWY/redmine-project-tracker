@@ -6,3 +6,9 @@ build/
 *.log
 .DS_Store
 *.tsbuildinfo
+
+# Python (backend-python)
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
