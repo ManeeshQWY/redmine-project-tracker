@@ -11,6 +11,11 @@ class CustomFieldValue(BaseModel):
     value: str | list[str] | None = None
 
 
+class AssigneeRef(BaseModel):
+    id: int
+    name: str
+
+
 class Issue(BaseModel):
     id: int
     project: str
@@ -36,6 +41,11 @@ class Issue(BaseModel):
     assignedQA: str | None = None
     platform: str | None = None
     additionalAssignee: str | None = None
+    # Structured version of additionalAssignee, added for user-assignment analysis (needs
+    # real ids to identify a user unambiguously). additionalAssignee (string) is kept
+    # unchanged alongside this for backward compatibility with existing consumers
+    # (TicketTable column, Excel export).
+    additionalAssignees: list[AssigneeRef] = []
     estimatedTimeForQA: str | None = None
     customFields: list[CustomFieldValue] = []
 

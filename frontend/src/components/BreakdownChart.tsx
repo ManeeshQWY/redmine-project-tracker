@@ -1,8 +1,6 @@
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CountBucket } from "../utils/aggregations";
-import { chartTheme, useTheme } from "../theme";
-
-const COLORS = ["#2563eb", "#7c3aed", "#0ea5e9", "#059669", "#d97706", "#dc2626", "#64748b", "#db2777", "#0891b2", "#65a30d"];
+import { CHART_COLORS, chartTheme, useTheme } from "../theme";
 
 interface Props {
   title: string;
@@ -40,7 +38,7 @@ export default function BreakdownChart({ title, data, maxBars = 10, onBarClick }
               cursor={onBarClick ? "pointer" : undefined}
             >
               {shown.map((_, idx) => (
-                <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
               ))}
             </Bar>
           </BarChart>

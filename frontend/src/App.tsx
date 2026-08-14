@@ -15,14 +15,17 @@ import AssigneeSummaryTable from "./components/AssigneeSummaryTable";
 import FiltersBar from "./components/FiltersBar";
 import TicketTable from "./components/TicketTable";
 import AgingPanel from "./components/AgingPanel";
+import AgingByTrackerPanel from "./components/AgingByTrackerPanel";
 import ResolutionTimePanel from "./components/ResolutionTimePanel";
 import EstimateVsActualPanel from "./components/EstimateVsActualPanel";
 import ReleaseDashboard from "./components/ReleaseDashboard";
 import QADashboard from "./components/QADashboard";
 import TimeSpentByUserPanel from "./components/TimeSpentByUserPanel";
 import LoadingIndicator from "./components/LoadingIndicator";
+import ClosedTicketsTrendPanel from "./components/ClosedTicketsTrendPanel";
+import UserAssignmentPanel from "./components/UserAssignmentPanel";
 
-type Tab = "overview" | "tickets" | "aging" | "release" | "qa" | "time";
+type Tab = "overview" | "tickets" | "aging" | "release" | "qa" | "time" | "closedTrend" | "myAssigned";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
@@ -31,6 +34,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "release", label: "Release Dashboard" },
   { id: "qa", label: "QA Dashboard" },
   { id: "time", label: "Time Spent by User" },
+  { id: "closedTrend", label: "Closed Tickets Trend" },
+  { id: "myAssigned", label: "My Assigned Tickets" },
 ];
 const TAB_IDS = new Set(TABS.map((t) => t.id));
 
@@ -218,7 +223,7 @@ export default function App() {
               />
             ) : (
               <>
-                <nav className="flex gap-1 border-b border-slate-200 dark:border-slate-700">
+                <nav className="flex flex-wrap gap-1 border-b border-slate-200 dark:border-slate-700">
                   {TABS.map((t) => (
                     <button
                       key={t.id}
@@ -261,6 +266,7 @@ export default function App() {
                 {tab === "aging" && (
                   <div className="space-y-4">
                     <AgingPanel issues={filteredIssues} redmineBaseUrl={meta?.redmineBaseUrl ?? ""} />
+                    <AgingByTrackerPanel issues={filteredIssues} />
                     <ResolutionTimePanel issues={filteredIssues} />
                     <EstimateVsActualPanel issues={filteredIssues} />
                   </div>
@@ -271,6 +277,10 @@ export default function App() {
                 {tab === "qa" && <QADashboard issues={filteredIssues} />}
 
                 {tab === "time" && <TimeSpentByUserPanel projectIdentifier={selectedProject} onSessionExpired={() => setUser(null)} />}
+
+                {tab === "closedTrend" && <ClosedTicketsTrendPanel issues={filteredIssues} />}
+
+                {tab === "myAssigned" && <UserAssignmentPanel issues={filteredIssues} redmineBaseUrl={meta?.redmineBaseUrl ?? ""} />}
               </>
             )}
           </>

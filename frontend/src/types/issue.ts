@@ -7,6 +7,11 @@ export interface CustomFieldValue {
   value: string | string[] | null;
 }
 
+export interface AssigneeRef {
+  id: number;
+  name: string;
+}
+
 export interface Issue {
   id: number;
   project: string;
@@ -32,6 +37,7 @@ export interface Issue {
   assignedQA: string | null;
   platform: string | null;
   additionalAssignee: string | null;
+  additionalAssignees: AssigneeRef[];
   estimatedTimeForQA: string | null;
   customFields: CustomFieldValue[];
 }

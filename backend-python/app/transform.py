@@ -2,7 +2,7 @@ import math
 import re
 from typing import Any
 
-from .models import CustomFieldValue, Issue, TimeEntry
+from .models import AssigneeRef, CustomFieldValue, Issue, TimeEntry
 
 # Known custom fields we surface as first-class columns. Matched by NAME
 # (case-insensitive), never by hardcoded id, since custom field ids are
@@ -35,6 +35,24 @@ def _resolve_custom_field_display(value: Any, user_map: dict[int, str]) -> str |
         if v not in (None, "")
     ]
     return ", ".join(resolved) if resolved else None
+
+
+def _resolve_custom_field_user_refs(value: Any, user_map: dict[int, str]) -> list[AssigneeRef]:
+    """Like _resolve_custom_field_display, but keeps the numeric id alongside the
+    resolved name instead of collapsing to a display string — needed to identify a user
+    unambiguously (display names alone could collide) for user-assignment analysis.
+    Values that aren't a resolvable numeric user id are skipped, since they can't be
+    matched to a specific person."""
+    if value is None:
+        return []
+    values = value if isinstance(value, list) else [value]
+    refs: list[AssigneeRef] = []
+    for v in values:
+        if not isinstance(v, str) or v == "" or not _is_numeric_id(v):
+            continue
+        user_id = int(v)
+        refs.append(AssigneeRef(id=user_id, name=user_map.get(user_id, v)))
+    return refs
 
 
 def _find_custom_field(fields: list[dict[str, Any]], target_name: str) -> dict[str, Any] | None:
@@ -98,6 +116,9 @@ def transform_issue(raw: dict[str, Any], user_map: dict[int, str]) -> Issue:
         additionalAssignee=_resolve_custom_field_display(additional_assignee_field["value"], user_map)
         if additional_assignee_field
         else None,
+        additionalAssignees=_resolve_custom_field_user_refs(additional_assignee_field["value"], user_map)
+        if additional_assignee_field
+        else [],
         estimatedTimeForQA=_resolve_custom_field_display(estimated_qa_field["value"], user_map)
         if estimated_qa_field
         else None,

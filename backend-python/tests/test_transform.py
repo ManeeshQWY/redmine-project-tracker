@@ -79,6 +79,23 @@ class TestCustomFieldResolution:
         assert issue.customFields[0].name == "Testing Type"
         assert issue.customFields[0].value == ["QA"]
 
+    def test_additional_assignees_structured_list_resolves_ids_and_names(self):
+        raw = base_raw(custom_fields=[{"id": 3, "name": "Additional Assignee", "value": ["42", "99"], "multiple": True}])
+        issue = transform_issue(raw, {42: "Jane QA", 99: "Amal Prasad"})
+        assert [(r.id, r.name) for r in issue.additionalAssignees] == [(42, "Jane QA"), (99, "Amal Prasad")]
+        # the existing comma-joined string stays intact alongside the new structured field
+        assert issue.additionalAssignee == "Jane QA, Amal Prasad"
+
+    def test_additional_assignees_empty_list_when_field_absent(self):
+        raw = base_raw(custom_fields=[])
+        issue = transform_issue(raw, {})
+        assert issue.additionalAssignees == []
+
+    def test_additional_assignees_skips_non_numeric_values(self):
+        raw = base_raw(custom_fields=[{"id": 3, "name": "Additional Assignee", "value": ["not-a-user-id"], "multiple": True}])
+        issue = transform_issue(raw, {})
+        assert issue.additionalAssignees == []
+
 
 class TestStatusIsClosed:
     def test_uses_status_is_closed_flag_not_fixed_status_id(self):

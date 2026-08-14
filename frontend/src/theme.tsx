@@ -33,6 +33,9 @@ export function useTheme(): ThemeContextValue {
   return ctx;
 }
 
+/** Shared categorical palette for all charts (breakdowns, stacked bars) so tracker/status/etc. colors stay consistent across panels. */
+export const CHART_COLORS = ["#2563eb", "#7c3aed", "#0ea5e9", "#059669", "#d97706", "#dc2626", "#64748b", "#db2777", "#0891b2", "#65a30d"];
+
 /** Recharts renders raw SVG and can't pick up Tailwind's dark: classes on tick/grid/tooltip text — these give plain color values for that. */
 export function chartTheme(isDark: boolean) {
   return {

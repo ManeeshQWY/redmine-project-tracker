@@ -188,6 +188,138 @@ export function aggregateByQA(issues: Issue[]): QASummaryRow[] {
   return Array.from(map.values()).sort((a, b) => b.total - a.total);
 }
 
+export interface MonthTrackerRow {
+  monthKey: string; // "2026-08", sortable
+  monthLabel: string; // "Aug 2026"
+  byTracker: Record<string, number>;
+  total: number;
+}
+
+/**
+ * Closed tickets grouped by the month they were closed in (closedOn), then by tracker.
+ * Only statusIsClosed tickets with a non-null closedOn are included — never updatedOn,
+ * and never a ticket that isn't actually closed (reuses the same statusIsClosed flag as
+ * everything else in the app, not a second definition of "closed").
+ */
+export function aggregateClosedByMonthAndTracker(issues: Issue[]): { rows: MonthTrackerRow[]; trackers: string[] } {
+  const trackerTotals = new Map<string, number>();
+  const monthMap = new Map<string, MonthTrackerRow>();
+
+  for (const issue of issues) {
+    if (!issue.statusIsClosed || !issue.closedOn) continue;
+    const d = new Date(issue.closedOn);
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const tracker = issue.tracker || "(blank)";
+
+    let row = monthMap.get(monthKey);
+    if (!row) {
+      row = { monthKey, monthLabel: d.toLocaleDateString("en-GB", { month: "short", year: "numeric" }), byTracker: {}, total: 0 };
+      monthMap.set(monthKey, row);
+    }
+    row.byTracker[tracker] = (row.byTracker[tracker] ?? 0) + 1;
+    row.total++;
+    trackerTotals.set(tracker, (trackerTotals.get(tracker) ?? 0) + 1);
+  }
+
+  const trackers = Array.from(trackerTotals.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([t]) => t);
+  const rows = Array.from(monthMap.values()).sort((a, b) => b.monthKey.localeCompare(a.monthKey)); // latest first, per spec example
+
+  return { rows, trackers };
+}
+
+export interface TrackerBucketRow {
+  bucket: string;
+  byTracker: Record<string, number>;
+  total: number;
+}
+
+/**
+ * Same open-ticket aging buckets as bucketAgingOpenTickets, broken down by tracker.
+ * Reuses ticketAgeDays (already excludes closed tickets) rather than a second aging
+ * definition.
+ */
+export function bucketAgingByTracker(issues: Issue[], now = new Date()): { rows: TrackerBucketRow[]; trackers: string[] } {
+  const trackerTotals = new Map<string, number>();
+  const bucketRows = new Map<AgingBucketLabel, TrackerBucketRow>(AGING_BUCKETS.map((b) => [b.label, { bucket: b.label, byTracker: {}, total: 0 }]));
+
+  for (const issue of issues) {
+    const age = ticketAgeDays(issue, now);
+    if (age === null) continue;
+    const bucket = AGING_BUCKETS.find((b) => age >= b.min && age <= b.max);
+    if (!bucket) continue;
+    const tracker = issue.tracker || "(blank)";
+    const row = bucketRows.get(bucket.label)!;
+    row.byTracker[tracker] = (row.byTracker[tracker] ?? 0) + 1;
+    row.total++;
+    trackerTotals.set(tracker, (trackerTotals.get(tracker) ?? 0) + 1);
+  }
+
+  const trackers = Array.from(trackerTotals.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([t]) => t);
+  const rows = AGING_BUCKETS.map((b) => bucketRows.get(b.label)!); // youngest -> oldest, matches existing aging chart
+
+  return { rows, trackers };
+}
+
+export type AssignmentType = "Main Assignee" | "Additional Assignee" | "Both";
+
+export interface UserAssignedTicket {
+  issue: Issue;
+  assignmentType: AssignmentType;
+}
+
+/** Every name that appears as either Main Assignee or Additional Assignee anywhere in
+ * the currently loaded issues — drives the user dropdown without a separate API call.
+ * `?? []` guards against a backend that predates the additionalAssignees field. */
+export function getAssignableUsers(issues: Issue[]): string[] {
+  const names = new Set<string>();
+  for (const issue of issues) {
+    if (issue.assignedTo) names.add(issue.assignedTo);
+    for (const a of issue.additionalAssignees ?? []) {
+      if (a.name) names.add(a.name);
+    }
+  }
+  return Array.from(names).sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Currently OPEN tickets (statusIsClosed excluded, same flag as everywhere else) where
+ * the given user is the Main Assignee, an Additional Assignee, or both. Each ticket
+ * appears exactly once — a ticket where the user is both never gets double-counted,
+ * it's classified as "Both".
+ */
+export function getUserAssignedOpenTickets(issues: Issue[], userName: string): UserAssignedTicket[] {
+  const result: UserAssignedTicket[] = [];
+  for (const issue of issues) {
+    if (issue.statusIsClosed) continue;
+    const isMain = issue.assignedTo === userName;
+    const isAdditional = (issue.additionalAssignees ?? []).some((a) => a.name === userName);
+    if (!isMain && !isAdditional) continue;
+    const assignmentType: AssignmentType = isMain && isAdditional ? "Both" : isMain ? "Main Assignee" : "Additional Assignee";
+    result.push({ issue, assignmentType });
+  }
+  return result;
+}
+
+export interface UserAssignmentSummary {
+  total: number; // unique union — every ticket in `assigned` counted once
+  mainCount: number; // tickets where the user is Main Assignee (includes "Both")
+  additionalCount: number; // tickets where the user is an Additional Assignee (includes "Both")
+}
+
+export function summarizeUserAssignment(assigned: UserAssignedTicket[]): UserAssignmentSummary {
+  let mainCount = 0;
+  let additionalCount = 0;
+  for (const a of assigned) {
+    if (a.assignmentType === "Main Assignee" || a.assignmentType === "Both") mainCount++;
+    if (a.assignmentType === "Additional Assignee" || a.assignmentType === "Both") additionalCount++;
+  }
+  return { total: assigned.length, mainCount, additionalCount };
+}
+
 export interface UserTimeSummaryRow {
   user: string;
   totalHours: number;
