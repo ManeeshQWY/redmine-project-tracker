@@ -24,6 +24,7 @@ import TimeSpentByUserPanel from "./components/TimeSpentByUserPanel";
 import LoadingIndicator from "./components/LoadingIndicator";
 import ClosedTicketsTrendPanel from "./components/ClosedTicketsTrendPanel";
 import UserAssignmentPanel from "./components/UserAssignmentPanel";
+import ChipMultiSelect from "./components/ChipMultiSelect";
 
 type Tab = "overview" | "tickets" | "aging" | "release" | "qa" | "time" | "closedTrend" | "myAssigned";
 
@@ -116,8 +117,8 @@ export default function App() {
   }
 
   /** Jumps to the Ticket Table pre-filtered to whatever chart bar was clicked. */
-  function drillDown(field: keyof TicketFilters, value: string) {
-    setFilters((prev) => ({ ...prev, [field]: value }));
+  function drillDown(patch: Partial<TicketFilters>) {
+    setFilters((prev) => ({ ...prev, ...patch }));
     selectTab("tickets");
   }
 
@@ -152,6 +153,9 @@ export default function App() {
 
   const filteredIssues = useMemo(() => applyFilters(issues, filters), [issues, filters]);
   const priorityOrder = useMemo(() => (meta ? meta.priorities.map((p) => p.name) : []), [meta]);
+  // Options come from the full unfiltered issue set (not filteredIssues) so the tracker
+  // filter's own option list never shrinks based on what's currently selected.
+  const availableTrackers = useMemo(() => Array.from(new Set(issues.map((i) => i.tracker || "(blank)"))).sort((a, b) => a.localeCompare(b)), [issues]);
 
   const selectedProjectMeta = projects.find((p) => p.identifier === selectedProject);
   const selectedProjectLabel =
@@ -235,6 +239,18 @@ export default function App() {
               />
             ) : (
               <>
+                {/* Global tracker filter — the one filter that applies uniformly across every tab
+                    (Overview, Aging, Release, QA, Closed Trend, Open Tickets per User, and the Ticket
+                    Table's own filters/export), rather than each panel having its own copy. */}
+                <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <ChipMultiSelect
+                    label="Tracker"
+                    options={availableTrackers}
+                    selected={filters.trackers}
+                    onChange={(next) => setFilters((prev) => ({ ...prev, trackers: next }))}
+                  />
+                </div>
+
                 <nav className="flex flex-wrap gap-1 border-b border-slate-200 dark:border-slate-700">
                   {TABS.map((t) => (
                     <button
@@ -255,13 +271,13 @@ export default function App() {
                   <div className="space-y-4">
                     <KpiCards issues={filteredIssues} />
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                      <BreakdownChart title="Ticket Status" data={aggregateByStatus(filteredIssues)} onBarClick={(v) => drillDown("status", v)} />
-                      <BreakdownChart title="Tracker" data={aggregateByTracker(filteredIssues)} onBarClick={(v) => drillDown("tracker", v)} />
-                      <BreakdownChart title="Priority" data={aggregateByPriority(filteredIssues)} onBarClick={(v) => drillDown("priority", v)} />
+                      <BreakdownChart title="Ticket Status" data={aggregateByStatus(filteredIssues)} onBarClick={(v) => drillDown({ status: v })} />
+                      <BreakdownChart title="Tracker" data={aggregateByTracker(filteredIssues)} onBarClick={(v) => drillDown({ trackers: [v] })} />
+                      <BreakdownChart title="Priority" data={aggregateByPriority(filteredIssues)} onBarClick={(v) => drillDown({ priority: v })} />
                       <BreakdownChart
                         title="Target Version / Release"
                         data={aggregateByTargetVersion(filteredIssues)}
-                        onBarClick={(v) => drillDown("targetVersion", v)}
+                        onBarClick={(v) => drillDown({ targetVersion: v })}
                       />
                     </div>
                     <AssigneeSummaryTable issues={filteredIssues} />

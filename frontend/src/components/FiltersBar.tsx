@@ -49,8 +49,10 @@ export default function FiltersBar({ issues, filters, onChange }: Props) {
   const [searchInput, setSearchInput] = useDebouncedSearch(filters.search, (v) => set("search", v));
 
   const projectsInView = uniqueSorted(issues.map((i) => i.project), "(blank)");
+  // Tracker itself is filtered globally now (see the tracker bar in App.tsx) — these
+  // dropdowns still respect whatever tracker(s) are globally selected (via `filters`
+  // passed into optionsExcluding below), they just don't offer a Tracker field of their own.
   const statuses = uniqueSorted(optionsExcluding(issues, filters, "status").map((i) => i.status), "(blank)");
-  const trackers = uniqueSorted(optionsExcluding(issues, filters, "tracker").map((i) => i.tracker), "(blank)");
   const priorities = uniqueSorted(optionsExcluding(issues, filters, "priority").map((i) => i.priority), "(blank)");
   const assignees = uniqueSorted(optionsExcluding(issues, filters, "assignee").map((i) => i.assignedTo), "(Unassigned)");
   const versions = uniqueSorted(optionsExcluding(issues, filters, "targetVersion").map((i) => i.targetVersion), "No Target Version");
@@ -81,15 +83,6 @@ export default function FiltersBar({ issues, filters, onChange }: Props) {
           <select className={selectCls} value={filters.status} onChange={(e) => set("status", e.target.value)}>
             <option value="">All</option>
             {statuses.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className={labelCls}>Tracker</label>
-          <select className={selectCls} value={filters.tracker} onChange={(e) => set("tracker", e.target.value)}>
-            <option value="">All</option>
-            {trackers.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>

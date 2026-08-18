@@ -2,7 +2,10 @@ import { Issue } from "../types/issue";
 
 export interface TicketFilters {
   status: string; // "" = All
-  tracker: string;
+  // Tracker is the one global filter, applied consistently across every tab (see the
+  // tracker bar in App.tsx) rather than being tab-local like the others here — hence
+  // multi-select (string[], [] = All) instead of the single-value string used elsewhere.
+  trackers: string[];
   priority: string;
   assignee: string;
   targetVersion: string;
@@ -15,7 +18,7 @@ export interface TicketFilters {
 
 export const EMPTY_FILTERS: TicketFilters = {
   status: "",
-  tracker: "",
+  trackers: [],
   priority: "",
   assignee: "",
   targetVersion: "",
@@ -33,7 +36,7 @@ export function applyFilters(issues: Issue[], filters: TicketFilters): Issue[] {
 
   return issues.filter((issue) => {
     if (filters.status && issue.status !== filters.status) return false;
-    if (filters.tracker && issue.tracker !== filters.tracker) return false;
+    if (filters.trackers.length > 0 && !filters.trackers.includes(issue.tracker)) return false;
     if (filters.priority && issue.priority !== filters.priority) return false;
     if (filters.assignee && (issue.assignedTo ?? "(Unassigned)") !== filters.assignee) return false;
     if (filters.targetVersion && (issue.targetVersion ?? "No Target Version") !== filters.targetVersion) return false;
