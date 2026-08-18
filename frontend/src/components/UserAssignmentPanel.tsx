@@ -47,13 +47,33 @@ function MiniBreakdown({ title, rows }: { title: string; rows: { key: string; co
 export default function UserAssignmentPanel({ issues, redmineBaseUrl }: { issues: Issue[]; redmineBaseUrl: string }) {
   const [selectedUser, setSelectedUser] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("age");
+  const [selectedTrackers, setSelectedTrackers] = useState<string[]>([]); // [] = All
 
   const users = useMemo(() => getAssignableUsers(issues), [issues]);
   const assigned = useMemo(() => (selectedUser ? getUserAssignedOpenTickets(issues, selectedUser) : []), [issues, selectedUser]);
-  const summary = useMemo(() => summarizeUserAssignment(assigned), [assigned]);
+
+  // Tracker options reflect this user's full assigned set (not already tracker-filtered),
+  // so switching trackers on/off never removes options out from under you.
+  const availableTrackers = useMemo(
+    () => Array.from(new Set(assigned.map((a) => a.issue.tracker || "(blank)"))).sort((a, b) => a.localeCompare(b)),
+    [assigned]
+  );
+
+  function toggleTracker(tracker: string) {
+    setSelectedTrackers((prev) => (prev.includes(tracker) ? prev.filter((t) => t !== tracker) : [...prev, tracker]));
+  }
+
+  const trackerFiltered = useMemo(
+    () => (selectedTrackers.length === 0 ? assigned : assigned.filter((a) => selectedTrackers.includes(a.issue.tracker || "(blank)"))),
+    [assigned, selectedTrackers]
+  );
+
+  // Filtering by tracker updates the KPI summary/breakdowns too, consistent with how
+  // filters work everywhere else in the app (Overview's KPIs already reflect FiltersBar).
+  const summary = useMemo(() => summarizeUserAssignment(trackerFiltered), [trackerFiltered]);
 
   const sorted = useMemo(() => {
-    const withAge = assigned.map((a) => ({ ...a, age: ticketAgeDays(a.issue) ?? 0 }));
+    const withAge = trackerFiltered.map((a) => ({ ...a, age: ticketAgeDays(a.issue) ?? 0 }));
     return withAge.sort((a, b) => {
       if (sortKey === "age") return b.age - a.age;
       if (sortKey === "createdOn") return b.issue.createdOn.localeCompare(a.issue.createdOn);
@@ -62,9 +82,9 @@ export default function UserAssignmentPanel({ issues, redmineBaseUrl }: { issues
       if (!b.issue.dueDate) return -1;
       return a.issue.dueDate.localeCompare(b.issue.dueDate);
     });
-  }, [assigned, sortKey]);
+  }, [trackerFiltered, sortKey]);
 
-  const assignedIssues = useMemo(() => assigned.map((a) => a.issue), [assigned]);
+  const assignedIssues = useMemo(() => trackerFiltered.map((a) => a.issue), [trackerFiltered]);
   const byTracker = useMemo(() => aggregateByTracker(assignedIssues), [assignedIssues]);
   const byPriority = useMemo(() => aggregateByPriority(assignedIssues), [assignedIssues]);
   const byVersion = useMemo(() => aggregateByTargetVersion(assignedIssues), [assignedIssues]);
@@ -72,12 +92,17 @@ export default function UserAssignmentPanel({ issues, redmineBaseUrl }: { issues
   const selectCls =
     "rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
 
+  function handleSelectUser(name: string) {
+    setSelectedUser(name);
+    setSelectedTrackers([]); // reset — last user's tracker selection may not apply to the new user
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <label className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
           Assigned User:
-          <select className={selectCls} value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)}>
+          <select className={selectCls} value={selectedUser} onChange={(e) => handleSelectUser(e.target.value)}>
             <option value="">Select a user…</option>
             {users.map((u) => (
               <option key={u} value={u}>{u}</option>
@@ -114,7 +139,7 @@ export default function UserAssignmentPanel({ issues, redmineBaseUrl }: { issues
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Assigned Open Tickets</h3>
               <select className={selectCls} value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
                 <option value="age">Sort by Ticket Age (oldest first)</option>
@@ -122,6 +147,37 @@ export default function UserAssignmentPanel({ issues, redmineBaseUrl }: { issues
                 <option value="dueDate">Sort by Due Date (earliest first)</option>
               </select>
             </div>
+
+            <div className="mb-3 flex flex-wrap items-center gap-1.5">
+              <span className="mr-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">Tracker:</span>
+              <button
+                onClick={() => setSelectedTrackers([])}
+                className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                  selectedTrackers.length === 0
+                    ? "bg-brand-600 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+                }`}
+              >
+                All
+              </button>
+              {availableTrackers.map((tracker) => {
+                const active = selectedTrackers.includes(tracker);
+                return (
+                  <button
+                    key={tracker}
+                    onClick={() => toggleTracker(tracker)}
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                      active
+                        ? "bg-brand-600 text-white"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+                    }`}
+                  >
+                    {tracker}
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="max-h-[520px] overflow-auto">
               <table className="w-full min-w-[1200px] text-left text-xs">
                 <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">

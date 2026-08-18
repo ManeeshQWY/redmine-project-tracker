@@ -2,13 +2,14 @@ import { formatDateTime } from "../utils/format";
 
 interface Props {
   lastRefreshed: string | null;
+  lastFetchDurationMs: number | null;
   loading: boolean;
   onRefresh: () => void;
   onExport: () => void;
   exportDisabled: boolean;
 }
 
-export default function RefreshBar({ lastRefreshed, loading, onRefresh, onExport, exportDisabled }: Props) {
+export default function RefreshBar({ lastRefreshed, lastFetchDurationMs, loading, onRefresh, onExport, exportDisabled }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <button
@@ -26,7 +27,10 @@ export default function RefreshBar({ lastRefreshed, loading, onRefresh, onExport
         Export to Excel
       </button>
       {lastRefreshed && (
-        <span className="text-xs text-slate-500 dark:text-slate-400">Last Refreshed: {formatDateTime(lastRefreshed)}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">
+          Last Refreshed: {formatDateTime(lastRefreshed)}
+          {lastFetchDurationMs !== null && ` (loaded in ${(lastFetchDurationMs / 1000).toFixed(1)}s)`}
+        </span>
       )}
     </div>
   );

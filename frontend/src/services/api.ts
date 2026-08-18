@@ -81,6 +81,13 @@ export function getProjectIssues(projectIdentifier: string, forceRefresh = false
   return getJson<ProjectIssuesResult>(`/api/projects/${encodeURIComponent(projectIdentifier)}/issues${query}`);
 }
 
+/** One cheap Redmine call (limit=1) just to preview total_count, so the loading screen
+ * can show "~X tickets to load" without waiting for the full fetch. Fire-and-forget —
+ * if it fails or is slow, the loading screen just falls back to its generic message. */
+export function getIssueCount(projectIdentifier: string): Promise<number> {
+  return getJson<{ totalCount: number }>(`/api/projects/${encodeURIComponent(projectIdentifier)}/issues/count`).then((r) => r.totalCount);
+}
+
 /** Not auto-fetched with issues — time entry volume can be very large, so this is called only when the Time Spent by User panel is explicitly opened. */
 export function getTimeEntries(projectIdentifier: string, forceRefresh = false): Promise<TimeEntriesResult> {
   const query = forceRefresh ? "?refresh=true" : "";

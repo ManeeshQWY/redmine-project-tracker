@@ -97,6 +97,15 @@ async def get_global_user_map(api_key: str) -> dict[int, str]:
     return merged
 
 
+async def get_issue_count(project_identifier: str | None, api_key: str) -> int:
+    """Single cheap request (limit=1) just to read total_count — lets the frontend show
+    "~X tickets to load" immediately, without waiting for the full paginated fetch."""
+    is_all_projects = not project_identifier or project_identifier == ALL_PROJECTS
+    path = "/issues.json?status_id=*&limit=1" if is_all_projects else f"/issues.json?project_id={project_identifier}&status_id=*&limit=1"
+    res = await request_json(path, api_key)
+    return int(res.get("total_count", 0))
+
+
 async def get_project_issues(
     project_identifier: str | None,
     api_key: str,

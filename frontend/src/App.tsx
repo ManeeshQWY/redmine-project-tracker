@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ALL_PROJECTS, ApiError, CurrentUser, getCurrentUser, getMeta, getProjectIssues, getProjects, logout } from "./services/api";
+import { ALL_PROJECTS, ApiError, CurrentUser, getCurrentUser, getIssueCount, getMeta, getProjectIssues, getProjects, logout } from "./services/api";
 import { Issue, MetaResult, ProjectMeta } from "./types/issue";
 import { applyFilters, EMPTY_FILTERS, TicketFilters } from "./utils/filters";
 import { aggregateByStatus, aggregateByTracker, aggregateByPriority, aggregateByTargetVersion } from "./utils/aggregations";
@@ -35,7 +35,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "qa", label: "QA Dashboard" },
   { id: "time", label: "Time Spent by User" },
   { id: "closedTrend", label: "Closed Tickets Trend" },
-  { id: "myAssigned", label: "My Assigned Tickets" },
+  { id: "myAssigned", label: "Open Tickets per User" },
 ];
 const TAB_IDS = new Set(TABS.map((t) => t.id));
 
@@ -59,6 +59,8 @@ export default function App() {
   const [selectedProject, setSelectedProject] = useState<string | null>(() => localStorage.getItem(PROJECT_STORAGE_KEY));
   const [issues, setIssues] = useState<Issue[]>([]);
   const [lastRefreshed, setLastRefreshed] = useState<string | null>(null);
+  const [lastFetchDurationMs, setLastFetchDurationMs] = useState<number | null>(null);
+  const [approxTotal, setApproxTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<TicketFilters>(EMPTY_FILTERS);
@@ -129,10 +131,18 @@ export default function App() {
   async function loadIssues(projectIdentifier: string, forceRefresh: boolean) {
     setLoading(true);
     setError(null);
+    setApproxTotal(null);
+    // Fire-and-forget: a quick separate call just to preview the total count for the
+    // loading screen. Never blocks or fails the real fetch — if it errors or arrives
+    // late, the loading screen just keeps its generic message.
+    getIssueCount(projectIdentifier)
+      .then(setApproxTotal)
+      .catch(() => undefined);
     try {
       const result = await getProjectIssues(projectIdentifier, forceRefresh);
       setIssues(result.issues);
       setLastRefreshed(result.fetchedAt);
+      setLastFetchDurationMs(result.durationMs);
     } catch (err) {
       handleApiError(err);
     } finally {
@@ -207,6 +217,7 @@ export default function App() {
           <>
             <RefreshBar
               lastRefreshed={lastRefreshed}
+              lastFetchDurationMs={lastFetchDurationMs}
               loading={loading}
               onRefresh={() => loadIssues(selectedProject, true)}
               onExport={() => meta && exportToExcel(filteredIssues, meta.redmineBaseUrl, selectedProjectLabel)}
@@ -220,6 +231,7 @@ export default function App() {
                     ? "Loading tickets from every project on the instance — this covers 19,000+ tickets and can take a minute or more…"
                     : "Loading tickets from Redmine — this can take a while for large projects…"
                 }
+                approxTotal={approxTotal}
               />
             ) : (
               <>
