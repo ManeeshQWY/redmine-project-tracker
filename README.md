@@ -19,7 +19,7 @@ entry volume can be very large (16,000+ for one mid-size project, more for All P
 ## Architecture
 
 ```
-Browser (React) → this app's Node/Express backend → Redmine REST API
+Browser (React) → this app's FastAPI backend → Redmine REST API
 ```
 
 **Each teammate logs in with their own Redmine API key** via the app's login screen —
@@ -30,14 +30,15 @@ stores the raw key — only that opaque cookie, which is useless outside this ap
 frontend only ever calls `/api/*` on our own backend, never Redmine directly.
 
 ```
-backend/            Express + TypeScript API server (talks to Redmine)
-  src/services/      Redmine HTTP client, pagination, caching, data transforms,
-                      session store (in-memory, per-user)
-  src/routes/        /api/auth (login/logout/me), /api/projects,
-                      /api/projects/:id/issues, /api/meta
-  src/middleware/     requireSession — protects all routes except /api/auth and /api/health
-  src/types/         Raw Redmine shapes + normalized Issue model
-  tests/             vitest unit tests
+backend-python/      FastAPI + Python API server (talks to Redmine)
+  app/redmine_client.py   Redmine HTTP client + pagination + error handling
+  app/redmine_service.py  get_projects/get_issues/get_time_entries/resolve_current_user/...
+  app/transform.py         Raw Redmine JSON -> normalized Issue/TimeEntry models
+  app/aggregations.py      Business logic: closed/not-closed, aging, resolution time, etc.
+  app/data_store.py        In-memory TTL caching (shared per-project)
+  app/session_store.py     In-memory session store (api_key + user, keyed by session id)
+  app/routers/              auth, projects, issues, time_entries, meta
+  tests/                     pytest unit tests
 
 frontend/            React + TypeScript + Vite + Tailwind app
   src/services/api.ts   The only module that calls the backend (credentials:"include"
@@ -53,47 +54,53 @@ accounts can have different project/issue permissions in Redmine.
 
 ## Prerequisites
 
-- Node.js 20+ (this was built/tested against Node 24 / npm 11)
+- Python 3.11+ and Node.js 20+ (backend and frontend respectively)
 - Each user needs their own Redmine API key for `https://support.qwysoft.com`
   (Redmine → My account → API access key) — entered at login, not configured anywhere.
 
 ## Setup
 
-**1. Install dependencies** (both apps have separate `package.json`s):
+**1. Install dependencies:**
 
 ```bash
-cd backend && npm install
-cd ../frontend && npm install
+cd backend-python
+python -m venv venv
+./venv/Scripts/pip install -r requirements.txt   # Windows
+# source venv/bin/activate && pip install -r requirements.txt   # macOS/Linux
+
+cd ../frontend
+npm install
 ```
 
 **2. Configure environment variables** — copy the example:
 
 ```bash
-cd backend
+cd backend-python
 cp .env.example .env
 ```
 
-Edit `backend/.env`:
+Edit `backend-python/.env`:
 
 ```
 REDMINE_BASE_URL=https://support.qwysoft.com
-PORT=4000
-NODE_ENV=
+PORT=4001
+ENVIRONMENT=
 ```
 
-There's no API key to set here — `backend/.env` only needs the Redmine base URL. Set
-`NODE_ENV=production` when deploying (enables secure cookies and serving the built
-frontend); leave it blank for local development. `backend/.env` is gitignored — never
-commit it.
+There's no API key to set here — `backend-python/.env` only needs the Redmine base URL.
+Set `ENVIRONMENT=production` when deploying (enables secure cookies and serving the
+built frontend); leave it blank for local development. `backend-python/.env` is
+gitignored — never commit it.
 
 **3. Start the backend:**
 
 ```bash
-cd backend
-npm run dev
+cd backend-python
+./venv/Scripts/python run.py   # Windows
+# venv/bin/python run.py       # macOS/Linux
 ```
 
-It listens on `http://localhost:4000`.
+It listens on `http://localhost:4001`.
 
 **4. Start the frontend** (in a second terminal):
 
@@ -112,25 +119,23 @@ It listens on `http://localhost:5173` and proxies `/api/*` to the backend (see
 2. Select a project from the dropdown (e.g. "INDIA - ERP Platform").
 3. Wait for the initial load — for a ~2,300-ticket project this takes roughly
    15-20 seconds the first time (paginated fetch from Redmine); subsequent
-   loads for the same project are served from an in-memory cache (per your account)
-   until you hit **Refresh Data**, the 15-minute cache expires, or the backend restarts.
+   loads for the same project are served from an in-memory cache (shared across
+   teammates viewing that project) until you hit **Refresh Data**, the 15-minute
+   cache expires, or the backend restarts.
 4. Explore the tabs: Overview (KPIs + breakdown charts), Ticket Table (search/filter/sort,
-   clickable ticket links), Aging & Resolution, Release Dashboard, QA Dashboard.
+   clickable ticket links), Aging & Resolution, Release Dashboard, QA Dashboard, and more.
 5. Click **Export to Excel** to download a 4-sheet workbook (Master Tickets, Summary, Time
    Analysis, Aging) reflecting the currently selected project and filters.
 6. **Log out** clears your session cookie server-side immediately.
 
 ## Deploying for a team (free-tier hosting)
 
-Since the app now handles its own per-user login, it's safe to host it somewhere your
-whole team can reach without needing a shared internal server:
-
-1. `npm run build` in both `backend/` and `frontend/` (the backend serves the built
-   frontend automatically — `frontend/dist` — when it exists, so this becomes one
-   deployable process).
-2. Push to a free host such as Render.com or Fly.io, run `npm start` in `backend/`, and
-   set `REDMINE_BASE_URL` and `NODE_ENV=production` as environment variables there.
-3. Share the resulting URL — each teammate logs in with their own Redmine API key.
+Since the app handles its own per-user login, it's safe to host it somewhere your whole
+team can reach without needing a shared internal server. This app is deployed to
+Render.com as a single Python (FastAPI) service, which serves the built frontend
+(`frontend/dist`) alongside the API — set `REDMINE_BASE_URL` and `ENVIRONMENT=production`
+as environment variables there, and share the resulting URL so each teammate can log in
+with their own Redmine API key.
 
 Free tiers typically sleep after a period of inactivity, so the first request after idle
 time can take 30-50 seconds to wake up.
@@ -138,8 +143,8 @@ time can take 30-50 seconds to wake up.
 ## Running tests
 
 ```bash
-cd backend
-npm test
+cd backend-python
+./venv/Scripts/python -m pytest -q
 ```
 
 Covers: pagination (including the "don't assume the first page is everything" case and

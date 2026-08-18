@@ -1,12 +1,7 @@
-# Redmine Project Tracker — Python backend (alternative to `backend/`)
+# Redmine Project Tracker — Backend
 
-A FastAPI port of `backend/` (Node/Express). Same API contract, same behavior, same
-`/api/*` routes returning identically-shaped JSON — the existing `frontend/` (React)
-talks to this exactly as it talks to the Node backend, with zero frontend changes.
-
-This exists **alongside** the Node backend, not in place of it — both are kept so you
-can compare or choose. Only one should be running against the frontend's proxy at a
-time (see `frontend/vite.config.ts`'s `server.proxy` target).
+FastAPI backend for the app. Talks to Redmine's REST API on behalf of each logged-in
+user and serves normalized JSON to `frontend/` at `/api/*`.
 
 ## Setup
 
@@ -17,7 +12,8 @@ python -m venv venv
 # source venv/bin/activate && pip install -r requirements.txt   # macOS/Linux
 
 cp .env.example .env
-# Edit .env: set REDMINE_BASE_URL (no API key needed — same per-user login model)
+# Edit .env: set REDMINE_BASE_URL (no API key needed — each teammate logs in with
+# their own Redmine API key via the app's login screen)
 ```
 
 ## Run
@@ -27,12 +23,8 @@ cp .env.example .env
 # venv/bin/python run.py       # macOS/Linux
 ```
 
-Listens on `http://localhost:4001` by default (`PORT` in `.env`) — deliberately
-different from the Node backend's `4000` so both can run at once without conflicting.
-
-To point the frontend at this backend instead of Node, change the `target` in
-`frontend/vite.config.ts`'s proxy config to `http://localhost:4001`, then restart the
-Vite dev server (Vite doesn't hot-reload config file changes).
+Listens on `http://localhost:4001` by default (`PORT` in `.env`). The frontend's dev
+proxy (`frontend/vite.config.ts`'s `server.proxy` target) already points here.
 
 ## Tests
 
@@ -42,8 +34,7 @@ Vite dev server (Vite doesn't hot-reload config file changes).
 
 40 tests — pagination, HTTP error handling, transform/null-handling, custom-field
 resolution, session store, and the aggregation logic (status/tracker/priority, aging,
-resolution time, estimated-vs-actual) — mirroring the Node backend's vitest suite
-one-for-one.
+resolution time, estimated-vs-actual).
 
 ## Structure
 
@@ -64,19 +55,15 @@ app/
 tests/                        pytest suite (respx for mocking Redmine HTTP calls)
 ```
 
-## Notable differences from the Node version
+## Notable design choices
 
-- **Error responses** are made to match Node's `{"error": "..."}` shape exactly (FastAPI's
-  default is `{"detail": "..."}`) via custom exception handlers in `main.py`, since the
-  frontend only ever reads `body.error`.
-- **Session cookie name** (`rtt_sid`) and **TTL** (12h) are identical to the Node backend
-  by design, not by accident — matching them means the frontend needs no changes.
-- Everything else (pagination concurrency=4, 15min/1h cache TTLs, shared per-project
-  caching, gzip compression, single-process static frontend serving) is a deliberate
-  1:1 port — see `backend/`'s own README for the full rationale behind each of these.
+- **Error responses** are shaped as `{"error": "..."}` (not FastAPI's default
+  `{"detail": "..."}`) via custom exception handlers in `main.py`, since the frontend
+  only ever reads `body.error`.
+- **Session cookie** (`rtt_sid`, httpOnly, 12h TTL) — the raw Redmine API key is held
+  server-side only, never sent back to the browser after login.
+- Pagination runs 4 concurrent lanes; issue/time-entry caches are shared per-project
+  (not per-user) with a 15-minute TTL, meta caches (statuses/trackers/priorities/
+  projects) at 1 hour — see the root `README.md` for the full rationale.
 
-## Known gaps vs. the Node version
-
-- Not yet deployed anywhere — this has only been run and tested locally.
-- No production deployment config (e.g. a `render.yaml` / build command for a Python
-  host) has been written yet, since the Node backend remains the deployed version.
+This is deployed to Render as the production service.

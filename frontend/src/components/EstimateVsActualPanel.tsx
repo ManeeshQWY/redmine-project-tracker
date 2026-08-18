@@ -5,6 +5,30 @@ import { estimateVsActual } from "../utils/aggregations";
 import { formatHours } from "../utils/format";
 import { chartTheme, useTheme } from "../theme";
 
+interface HoursTooltipProps {
+  active?: boolean;
+  payload?: { dataKey: string; value?: number; color?: string }[];
+  label?: string;
+  t: ReturnType<typeof chartTheme>;
+}
+
+/** Custom content instead of contentStyle/labelStyle — Recharts' default itemStyle for
+ * the value lines is hardcoded black and unreadable in dark mode. */
+function HoursTooltip({ active, payload, label, t }: HoursTooltipProps) {
+  if (!active || !payload || payload.length === 0) return null;
+  return (
+    <div className="rounded-md border px-3 py-2 text-xs shadow-sm" style={{ backgroundColor: t.tooltipBg, borderColor: t.tooltipBorder, color: t.tooltipText }}>
+      <div className="mb-1 font-medium">{label}</div>
+      {payload.map((p) => (
+        <div key={p.dataKey} className="flex items-center justify-between gap-4">
+          <span style={{ color: p.color }}>{p.dataKey === "estimated" ? "Estimated" : "Actual"}</span>
+          <span>{(p.value ?? 0).toFixed(1)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function EstimateVsActualPanel({ issues }: { issues: Issue[] }) {
   const { isDark } = useTheme();
   const t = chartTheme(isDark);
@@ -52,11 +76,7 @@ export default function EstimateVsActualPanel({ issues }: { issues: Issue[] }) {
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={t.grid} />
             <XAxis type="number" tick={{ fontSize: 11, fill: t.tick }} />
             <YAxis type="category" dataKey="tracker" width={100} tick={{ fontSize: 11, fill: t.tick }} />
-            <Tooltip
-              formatter={(v: number) => v.toFixed(1)}
-              contentStyle={{ backgroundColor: t.tooltipBg, borderColor: t.tooltipBorder, color: t.tooltipText, fontSize: 12 }}
-              labelStyle={{ color: t.tooltipText }}
-            />
+            <Tooltip content={(props) => <HoursTooltip {...(props as unknown as HoursTooltipProps)} t={t} />} />
             <Legend wrapperStyle={{ fontSize: 12, color: t.tick }} />
             <Bar dataKey="estimated" name="Estimated" fill="#2563eb" radius={[0, 4, 4, 0]} />
             <Bar dataKey="actual" name="Actual" fill="#059669" radius={[0, 4, 4, 0]} />

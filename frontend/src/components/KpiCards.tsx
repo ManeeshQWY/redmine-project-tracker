@@ -5,11 +5,12 @@ interface Props {
   issues: Issue[];
 }
 
-function Card({ label, value, tone }: { label: string; value: number; tone?: string }) {
+function Card({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
-    <div className="flex-1 min-w-[140px] rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</div>
-      <div className={`mt-1 text-2xl font-semibold ${tone ?? "text-slate-800 dark:text-slate-100"}`}>{value.toLocaleString()}</div>
+    <div className="relative flex-1 min-w-[140px] overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className={`absolute inset-x-0 top-0 h-0.5 ${accent}`} />
+      <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</div>
+      <div className="mt-1.5 text-2xl font-semibold text-slate-800 dark:text-slate-100">{value.toLocaleString()}</div>
     </div>
   );
 }
@@ -25,13 +26,13 @@ export default function KpiCards({ issues }: Props) {
 
   return (
     <div className="flex flex-wrap gap-3">
-      <Card label="Total Tickets" value={total} />
-      <Card label="Closed Tickets" value={closed} tone="text-emerald-600" />
-      <Card label="Not Closed" value={notClosed} tone="text-amber-600" />
-      <Card label="Bugs" value={bugs} tone="text-rose-600" />
-      <Card label="Features" value={features} tone="text-brand-600" />
-      <Card label="High Priority" value={highPriority} tone="text-rose-600" />
-      <Card label="In Progress" value={inProgress} tone="text-brand-600" />
+      <Card label="Total Tickets" value={total} accent="bg-slate-400" />
+      <Card label="Closed Tickets" value={closed} accent="bg-emerald-500" />
+      <Card label="Not Closed" value={notClosed} accent="bg-amber-500" />
+      <Card label="Bugs" value={bugs} accent="bg-rose-500" />
+      <Card label="Features" value={features} accent="bg-brand-500" />
+      <Card label="High Priority" value={highPriority} accent="bg-rose-500" />
+      <Card label="In Progress" value={inProgress} accent="bg-brand-500" />
     </div>
   );
 }

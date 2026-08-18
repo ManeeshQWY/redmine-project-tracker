@@ -1,7 +1,7 @@
 import { MetaResult, ProjectIssuesResult, ProjectMeta, TimeEntriesResult } from "../types/issue";
 
 // All Redmine access goes through our own backend at /api/* (proxied to
-// http://localhost:4000 in dev, see vite.config.ts). The browser never talks
+// http://localhost:4001 in dev, see vite.config.ts). The browser never talks
 // to Redmine directly and never stores a raw API key — only an httpOnly
 // session cookie set by the backend after login, hence credentials:"include"
 // on every call.

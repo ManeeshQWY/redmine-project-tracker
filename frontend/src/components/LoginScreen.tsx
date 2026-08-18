@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { ApiError, login } from "../services/api";
 import { CurrentUser } from "../services/api";
+import { LogoMark } from "./icons";
 
 interface Props {
   onLoggedIn: (user: CurrentUser) => void;
@@ -28,7 +29,10 @@ export default function LoginScreen({ onLoggedIn }: Props) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 dark:bg-slate-950">
-      <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-lg shadow-slate-200/50 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+        <div className="mb-6 flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
+          <LogoMark className="h-5 w-5" />
+        </div>
         <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Redmine Project Tracker</h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Sign in with your own Redmine API key.</p>
 
@@ -42,7 +46,7 @@ export default function LoginScreen({ onLoggedIn }: Props) {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="Paste your API key…"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
 
@@ -51,7 +55,7 @@ export default function LoginScreen({ onLoggedIn }: Props) {
           <button
             type="submit"
             disabled={submitting || !apiKey.trim()}
-            className="w-full rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? "Signing in…" : "Sign In"}
           </button>
