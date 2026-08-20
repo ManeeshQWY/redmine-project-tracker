@@ -25,6 +25,7 @@ import LoadingIndicator from "./components/LoadingIndicator";
 import ClosedTicketsTrendPanel from "./components/ClosedTicketsTrendPanel";
 import UserAssignmentPanel from "./components/UserAssignmentPanel";
 import ChipMultiSelect from "./components/ChipMultiSelect";
+import ChatPanel from "./components/ChatPanel";
 import { LogoMark, TabIcon } from "./components/icons";
 
 type Tab = "overview" | "tickets" | "aging" | "release" | "qa" | "time" | "closedTrend" | "myAssigned";
@@ -366,6 +367,8 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {selectedProject && <ChatPanel projectIdentifier={selectedProject} projectLabel={selectedProjectLabel} onApplyFilter={drillDown} />}
     </div>
   );
 }

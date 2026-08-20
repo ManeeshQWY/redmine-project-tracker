@@ -50,6 +50,10 @@ def aggregate_by_target_version(issues: list[Issue]) -> list[CountBucket]:
     return _group_by_key(issues, lambda i: i.targetVersion or "No Target Version")
 
 
+def aggregate_by_assignee(issues: list[Issue]) -> list[CountBucket]:
+    return _group_by_key(issues, lambda i: i.assignedTo or None)
+
+
 AGING_BUCKETS = [
     ("0-3 Days", 0, 3),
     ("4-7 Days", 4, 7),

@@ -1,4 +1,5 @@
 import { MetaResult, ProjectIssuesResult, ProjectMeta, TimeEntriesResult } from "../types/issue";
+import { TicketFilters } from "../utils/filters";
 
 // All Redmine access goes through our own backend at /api/* (proxied to
 // http://localhost:4001 in dev, see vite.config.ts). The browser never talks
@@ -86,6 +87,25 @@ export function getProjectIssues(projectIdentifier: string, forceRefresh = false
  * if it fails or is slow, the loading screen just falls back to its generic message. */
 export function getIssueCount(projectIdentifier: string): Promise<number> {
   return getJson<{ totalCount: number }>(`/api/projects/${encodeURIComponent(projectIdentifier)}/issues/count`).then((r) => r.totalCount);
+}
+
+export interface ChatTurn {
+  role: "user" | "model";
+  text: string;
+}
+
+export interface ChatResponse {
+  reply: string;
+  // Present when the answer was scoped to one specific assignee/tracker/status/priority/
+  // search term — apply it to jump straight to that slice in the Ticket Table.
+  suggestedFilter: Partial<TicketFilters> | null;
+}
+
+/** Read-only Q&A over the current project's already-loaded tickets — scoped to the
+ * whole project, not whatever tracker/etc. filters are active in the UI. `history` is
+ * the prior turns of this conversation (the backend keeps no state between requests). */
+export function sendChatMessage(projectIdentifier: string, message: string, history: ChatTurn[]): Promise<ChatResponse> {
+  return postJson<ChatResponse>(`/api/projects/${encodeURIComponent(projectIdentifier)}/chat`, { message, history });
 }
 
 /** Not auto-fetched with issues — time entry volume can be very large, so this is called only when the Time Spent by User panel is explicitly opened. */

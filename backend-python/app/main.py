@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import IS_PRODUCTION, REDMINE_BASE_URL
 from .redmine_client import RedmineApiError
-from .routers import auth, issues, meta, projects, time_entries
+from .routers import auth, chat, issues, meta, projects, time_entries
 
 app = FastAPI()
 
@@ -66,6 +66,7 @@ app.include_router(projects.router)
 app.include_router(issues.router)
 app.include_router(time_entries.router)
 app.include_router(meta.router)
+app.include_router(chat.router)
 
 # Single-process deployment: serve the built frontend (frontend/npm run build → dist/)
 # as static files, with an SPA fallback so client-side routing still works. Lets the

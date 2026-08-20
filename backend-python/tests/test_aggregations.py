@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import pytest
 
 from app.aggregations import (
+    aggregate_by_assignee,
     aggregate_by_priority,
     aggregate_by_status,
     aggregate_by_tracker,
@@ -88,6 +89,18 @@ class TestAggregation:
     def test_aggregates_by_priority(self):
         result = aggregate_by_priority(self.issues)
         assert next(b for b in result if b.key == "High").count == 2
+
+    def test_aggregates_by_assignee(self):
+        issues = [
+            make_issue(id=1, assignedTo="Alice"),
+            make_issue(id=2, assignedTo="Alice"),
+            make_issue(id=3, assignedTo="Bob"),
+            make_issue(id=4, assignedTo=None),
+        ]
+        result = aggregate_by_assignee(issues)
+        assert next(b for b in result if b.key == "Alice").count == 2
+        assert next(b for b in result if b.key == "Bob").count == 1
+        assert next(b for b in result if b.key == "(blank)").count == 1
 
 
 class TestNullHandling:
