@@ -1,5 +1,5 @@
-// Mirrors backend/src/types/issue.ts — the frontend only ever talks to our own
-// backend (never Redmine directly), so this is the shape returned by /api/*.
+// Mirrors backend-python/app/models.py's Issue model — the frontend only ever talks to
+// our own backend (never Redmine directly), so this is the shape returned by /api/*.
 
 export interface CustomFieldValue {
   id: number;
@@ -14,6 +14,7 @@ export interface AssigneeRef {
 
 export interface Issue {
   id: number;
+  parentId: number | null;
   project: string;
   tracker: string;
   status: string;

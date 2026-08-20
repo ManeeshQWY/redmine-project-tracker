@@ -48,6 +48,28 @@ def _summarize(issue: Issue) -> dict:
     }
 
 
+def _collect_descendant_ids(root_id: int, issues: list[Issue]) -> set[int]:
+    """Every descendant ticket id of root_id (children, grandchildren, ...), found by
+    walking parentId links — not just direct children, since a subtask can itself have
+    subtasks. Mirrors frontend/src/components/TimeSpentByUserPanel.tsx's
+    collectDescendantIds so the chat and the UI panel agree on what "this ticket's
+    time" includes."""
+    children_by_parent: dict[int, list[int]] = {}
+    for issue in issues:
+        if issue.parentId is not None:
+            children_by_parent.setdefault(issue.parentId, []).append(issue.id)
+
+    collected = {root_id}
+    queue = [root_id]
+    while queue:
+        current = queue.pop()
+        for child_id in children_by_parent.get(current, []):
+            if child_id not in collected:
+                collected.add(child_id)
+                queue.append(child_id)
+    return collected
+
+
 def _detail(issue: Issue) -> dict:
     return {
         "found": True,
@@ -101,18 +123,22 @@ def build_tools(issues: list[Issue], api_key: str, project_identifier: str) -> t
         return _detail(issue) if issue else {"found": False}
 
     async def get_time_entries_for_ticket(ticket_id: int) -> dict:
-        """Look up individual time-log entries for one specific ticket — who logged how
-        many hours, and when. Use this (not get_ticket_by_id) whenever asked to break a
-        ticket's time down by person, since a ticket's own totalSpentHours is a sum
-        across everyone, not a per-person breakdown. Only works for a ticket_id that
-        exists in this project. May take a few seconds the first time it's called for
-        this project, since time entries aren't preloaded."""
+        """Look up individual time-log entries for one specific ticket, INCLUDING all of
+        its child/subtask tickets (e.g. an Epic's own logged time is usually 0 — the
+        real hours sit on its subtasks) — showing who logged how many hours, and when.
+        Use this (not get_ticket_by_id) whenever asked to break a ticket's time down by
+        person, since a ticket's own totalSpentHours is a sum across everyone, not a
+        per-person breakdown. Only works for a ticket_id that exists in this project.
+        May take a few seconds the first time it's called for this project, since time
+        entries aren't preloaded."""
         if ticket_id not in by_id:
             return {"found": False, "entries": []}
+        descendant_ids = _collect_descendant_ids(ticket_id, issues)
         result = await load_time_entries(api_key, project_identifier, False)
-        matching = [e for e in result.timeEntries if e.issueId == ticket_id]
+        matching = [e for e in result.timeEntries if e.issueId in descendant_ids]
         return {
             "found": True,
+            "childTicketCount": len(descendant_ids) - 1,
             "totalHours": round(sum(e.hours for e in matching), 2),
             "entries": [{"user": e.user, "hours": e.hours, "activity": e.activity, "spentOn": e.spentOn} for e in matching],
         }

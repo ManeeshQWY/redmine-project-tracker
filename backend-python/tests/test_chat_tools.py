@@ -226,3 +226,37 @@ class TestGetTimeEntriesForTicket:
         assert result["found"] is True
         assert result["totalHours"] == 5.5
         assert {e["user"] for e in result["entries"]} == {"Rangeen Suresh", "Amal Prasad"}
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_rolls_up_child_and_grandchild_tickets(self):
+        # Epic 25132 -> Task 25200 -> Subtask 25201 (grandchild); unrelated ticket 999
+        # should be excluded even though it shares the same project.
+        issues = [
+            make_issue(id=25132, tracker="Epic"),
+            make_issue(id=25200, tracker="Task", parentId=25132),
+            make_issue(id=25201, tracker="Task", parentId=25200),
+            make_issue(id=999, tracker="Task"),
+        ]
+        respx.get(url__regex=rf"{BASE_URL}/time_entries\.json.*").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "time_entries": [
+                        {"id": 1, "project": {"name": "P"}, "issue": {"id": 25132}, "user": {"name": "Alice"}, "activity": {"name": "Dev"}, "hours": 1.0, "spent_on": "2026-02-01"},
+                        {"id": 2, "project": {"name": "P"}, "issue": {"id": 25200}, "user": {"name": "Alice"}, "activity": {"name": "Dev"}, "hours": 90.0, "spent_on": "2026-02-01"},
+                        {"id": 3, "project": {"name": "P"}, "issue": {"id": 25201}, "user": {"name": "Bob"}, "activity": {"name": "QA"}, "hours": 21.5, "spent_on": "2026-02-02"},
+                        {"id": 4, "project": {"name": "P"}, "issue": {"id": 999}, "user": {"name": "Carol"}, "activity": {"name": "Dev"}, "hours": 50.0, "spent_on": "2026-02-01"},
+                    ],
+                    "total_count": 4,
+                    "offset": 0,
+                    "limit": 100,
+                },
+            )
+        )
+        tool = self._tool(issues, "time-entries-rollup")
+        result = await tool(25132)
+        assert result["found"] is True
+        assert result["childTicketCount"] == 2
+        assert result["totalHours"] == 112.5  # 1.0 + 90.0 + 21.5, excluding ticket 999
+        assert {e["user"] for e in result["entries"]} == {"Alice", "Bob"}

@@ -22,6 +22,17 @@ def base_raw(**overrides):
     return raw
 
 
+class TestParentId:
+    def test_resolves_parent_id_when_issue_has_a_parent(self):
+        raw = base_raw(parent={"id": 25132})
+        issue = transform_issue(raw, {})
+        assert issue.parentId == 25132
+
+    def test_none_when_issue_has_no_parent(self):
+        issue = transform_issue(base_raw(), {})
+        assert issue.parentId is None
+
+
 class TestNullHandling:
     def test_converts_null_fields_to_none_never_string_placeholders(self):
         raw = base_raw(assigned_to=None, fixed_version=None, estimated_hours=None, spent_hours=None, description=None)

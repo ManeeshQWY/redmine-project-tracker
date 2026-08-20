@@ -18,6 +18,7 @@ class AssigneeRef(BaseModel):
 
 class Issue(BaseModel):
     id: int
+    parentId: int | None = None
     project: str
     tracker: str
     status: str

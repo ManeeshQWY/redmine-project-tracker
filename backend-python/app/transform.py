@@ -91,6 +91,7 @@ def transform_issue(raw: dict[str, Any], user_map: dict[int, str]) -> Issue:
 
     return Issue(
         id=raw["id"],
+        parentId=(raw.get("parent") or {}).get("id"),
         project=(raw.get("project") or {}).get("name", ""),
         tracker=(raw.get("tracker") or {}).get("name", ""),
         status=(raw.get("status") or {}).get("name", ""),
