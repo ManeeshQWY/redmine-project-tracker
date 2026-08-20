@@ -42,6 +42,34 @@ def tools_by_name(issues):
     return {fn.__name__: fn for fn in tools}
 
 
+class TestGetTicketById:
+    def test_finds_ticket_by_exact_id_with_full_detail(self):
+        issue = make_issue(id=25132, subject="Fix login crash", tracker="Bug", assignedTo="Rangeen Suresh", estimatedHours=5.0, totalSpentHours=3.5)
+        result = tools_by_name([issue])["get_ticket_by_id"](25132)
+        assert result["found"] is True
+        assert result["id"] == 25132
+        assert result["subject"] == "Fix login crash"
+        assert result["assignedTo"] == "Rangeen Suresh"
+        assert result["estimatedHours"] == 5.0
+        assert result["totalSpentHours"] == 3.5
+
+    def test_falls_back_to_spent_hours_when_total_spent_hours_is_none(self):
+        issue = make_issue(id=1, totalSpentHours=None, spentHours=2.0)
+        result = tools_by_name([issue])["get_ticket_by_id"](1)
+        assert result["totalSpentHours"] == 2.0
+
+    def test_unknown_id_returns_found_false(self):
+        result = tools_by_name([make_issue(id=1)])["get_ticket_by_id"](99999)
+        assert result == {"found": False}
+
+    def test_search_tickets_search_text_does_not_match_a_ticket_id(self):
+        # Regression guard: search_tickets must NOT silently "work" for ID lookups —
+        # get_ticket_by_id is the only reliable path, per the model instructions.
+        issue = make_issue(id=25132, subject="Fix login crash")
+        result = tools_by_name([issue])["search_tickets"](search_text="25132")
+        assert result["totalMatches"] == 0
+
+
 class TestGetTicketCounts:
     def test_counts_total_open_closed(self):
         issues = [

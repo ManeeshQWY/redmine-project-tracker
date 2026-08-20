@@ -47,6 +47,30 @@ def _summarize(issue: Issue) -> dict:
     }
 
 
+def _detail(issue: Issue) -> dict:
+    return {
+        "found": True,
+        "id": issue.id,
+        "subject": issue.subject,
+        "tracker": issue.tracker,
+        "status": issue.status,
+        "priority": issue.priority,
+        "assignedTo": issue.assignedTo,
+        "additionalAssignees": [a.name for a in issue.additionalAssignees],
+        "targetVersion": issue.targetVersion,
+        "createdOn": issue.createdOn,
+        "updatedOn": issue.updatedOn,
+        "dueDate": issue.dueDate,
+        "closedOn": issue.closedOn,
+        "doneRatio": issue.doneRatio,
+        "estimatedHours": issue.estimatedHours,
+        # totalSpentHours is the ticket's total logged time across everyone who worked
+        # on it — Redmine tracks who-logged-what separately (time entries), which isn't
+        # exposed to this chatbot, so per-person time breakdowns aren't answerable here.
+        "totalSpentHours": issue.totalSpentHours if issue.totalSpentHours is not None else issue.spentHours,
+    }
+
+
 def build_tools(issues: list[Issue]) -> tuple[list[Callable], dict]:
     """Builds a fresh set of tool functions closing over this exact issue snapshot —
     called once per chat request, never shared or mutated across requests. Also returns
@@ -57,6 +81,17 @@ def build_tools(issues: list[Issue]) -> tuple[list[Callable], dict]:
     shown inline" rather than relying on the model remembering to separately report
     what it searched for, so it can't drift out of sync with what was actually shown."""
     filter_recorder: dict = {}
+    by_id = {issue.id: issue for issue in issues}
+
+    def get_ticket_by_id(ticket_id: int) -> dict:
+        """Look up one specific ticket by its numeric ID (e.g. "ticket #123", "issue
+        123", or a pasted Redmine URL ending in /issues/123 — extract the number).
+        ALWAYS use this instead of search_tickets when the user references a specific
+        ticket number; search_tickets' search_text only matches the subject text, never
+        the ID. Returns {"found": false} if no ticket with that ID exists in this
+        project (it may belong to a different project, or not exist)."""
+        issue = by_id.get(ticket_id)
+        return _detail(issue) if issue else {"found": False}
 
     def get_ticket_counts() -> dict:
         """Total, open, and closed ticket counts for the current project."""
@@ -153,6 +188,7 @@ def build_tools(issues: list[Issue]) -> tuple[list[Callable], dict]:
         return {"totalMatches": len(found), "tickets": [_summarize(i) for i in shown]}
 
     return [
+        get_ticket_by_id,
         get_ticket_counts,
         get_status_breakdown,
         get_tracker_breakdown,
