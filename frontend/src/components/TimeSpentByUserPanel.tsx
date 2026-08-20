@@ -56,6 +56,17 @@ export default function TimeSpentByUserPanel({ projectIdentifier, issues, onSess
     setTicketIdFilter("");
   }, [projectIdentifier]);
 
+  const trimmedFilter = ticketIdFilter.trim();
+  const rootTicketId = trimmedFilter && /^\d+$/.test(trimmedFilter) ? Number(trimmedFilter) : null;
+
+  // Rolls up child/grandchild tickets' time too (e.g. an Epic's own logged time is
+  // usually 0 — the real hours sit on its subtasks) — not just entries logged directly
+  // against the searched id. Computed here, before the early return below, because
+  // every hook must run unconditionally on every render — putting it after a
+  // conditional return previously crashed the whole panel (blank screen) the moment
+  // timeEntries went from null to non-null, since that changes how many hooks run.
+  const descendantIds = useMemo(() => (rootTicketId !== null ? collectDescendantIds(rootTicketId, issues) : null), [rootTicketId, issues]);
+
   async function load(forceRefresh: boolean) {
     setLoading(true);
     setError(null);
@@ -98,13 +109,6 @@ export default function TimeSpentByUserPanel({ projectIdentifier, issues, onSess
     );
   }
 
-  const trimmedFilter = ticketIdFilter.trim();
-  const rootTicketId = trimmedFilter && /^\d+$/.test(trimmedFilter) ? Number(trimmedFilter) : null;
-
-  // Rolls up child/grandchild tickets' time too (e.g. an Epic's own logged time is
-  // usually 0 — the real hours sit on its subtasks) — not just entries logged directly
-  // against the searched id.
-  const descendantIds = useMemo(() => (rootTicketId !== null ? collectDescendantIds(rootTicketId, issues) : null), [rootTicketId, issues]);
   const filteredEntries = descendantIds ? timeEntries.filter((e) => e.issueId !== null && descendantIds.has(e.issueId)) : timeEntries;
   const childCount = (descendantIds?.size ?? 1) - 1;
   const rows = aggregateTimeByUser(filteredEntries);
