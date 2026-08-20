@@ -1,7 +1,13 @@
 from datetime import datetime, timedelta, timezone
 
+import httpx
+import pytest
+import respx
+
 from app.chat_tools import build_tools
 from app.models import Issue
+
+BASE_URL = "https://redmine.test"
 
 
 def make_issue(**overrides) -> Issue:
@@ -38,7 +44,7 @@ def make_issue(**overrides) -> Issue:
 
 
 def tools_by_name(issues):
-    tools, _recorder = build_tools(issues)
+    tools, _recorder = build_tools(issues, "fake-key", "fake-project")
     return {fn.__name__: fn for fn in tools}
 
 
@@ -156,19 +162,19 @@ class TestFilterRecorder:
     to remember to call, and not for a call that already shows everything."""
 
     def test_recorder_is_empty_until_a_truncating_call_happens(self):
-        tools, recorder = build_tools([make_issue(id=1)])
+        tools, recorder = build_tools([make_issue(id=1)], "fake-key", "fake-project")
         assert recorder == {}
 
     def test_a_fully_shown_result_does_not_populate_the_recorder(self):
         issues = [make_issue(id=i, assignedTo="Alice") for i in range(1, 4)]  # well under MAX_RESULTS
-        tools, recorder = build_tools(issues)
+        tools, recorder = build_tools(issues, "fake-key", "fake-project")
         search = {fn.__name__: fn for fn in tools}["search_tickets"]
         search(assigned_to="Alice")
         assert recorder == {}
 
     def test_a_truncating_call_records_its_own_filter_args(self):
         issues = [make_issue(id=i, assignedTo="Alice") for i in range(1, 25)]  # exceeds MAX_RESULTS
-        tools, recorder = build_tools(issues)
+        tools, recorder = build_tools(issues, "fake-key", "fake-project")
         search = {fn.__name__: fn for fn in tools}["search_tickets"]
         search(assigned_to="Alice", tracker="Bug")
         assert recorder == {"assignee": "Alice", "tracker": "Bug", "status": None, "priority": None, "search": None}
@@ -179,8 +185,44 @@ class TestFilterRecorder:
         issues = [make_issue(id=i, assignedTo="Alice") for i in range(1, 21)] + [
             make_issue(id=i, assignedTo="Bob") for i in range(21, 41)
         ]
-        tools, recorder = build_tools(issues)
+        tools, recorder = build_tools(issues, "fake-key", "fake-project")
         search = {fn.__name__: fn for fn in tools}["search_tickets"]
         search(assigned_to="Alice")
         search(assigned_to="Bob")
         assert recorder["assignee"] == "Bob"
+
+
+class TestGetTimeEntriesForTicket:
+    def _tool(self, issues, project_identifier):
+        tools, _recorder = build_tools(issues, "test-key", project_identifier)
+        return {fn.__name__: fn for fn in tools}["get_time_entries_for_ticket"]
+
+    @pytest.mark.asyncio
+    async def test_unknown_ticket_id_short_circuits_without_a_redmine_call(self):
+        tool = self._tool([make_issue(id=1)], "time-entries-unknown-id")
+        result = await tool(99999)
+        assert result == {"found": False, "entries": []}
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_returns_only_entries_for_the_requested_ticket_with_a_summed_total(self):
+        respx.get(url__regex=rf"{BASE_URL}/time_entries\.json.*").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "time_entries": [
+                        {"id": 1, "project": {"name": "P"}, "issue": {"id": 25132}, "user": {"name": "Rangeen Suresh"}, "activity": {"name": "Development"}, "hours": 4.5, "spent_on": "2026-02-01"},
+                        {"id": 2, "project": {"name": "P"}, "issue": {"id": 25132}, "user": {"name": "Amal Prasad"}, "activity": {"name": "QA"}, "hours": 1.0, "spent_on": "2026-02-02"},
+                        {"id": 3, "project": {"name": "P"}, "issue": {"id": 999}, "user": {"name": "Someone Else"}, "activity": {"name": "Development"}, "hours": 10.0, "spent_on": "2026-02-01"},
+                    ],
+                    "total_count": 3,
+                    "offset": 0,
+                    "limit": 100,
+                },
+            )
+        )
+        tool = self._tool([make_issue(id=25132)], "time-entries-mixed")
+        result = await tool(25132)
+        assert result["found"] is True
+        assert result["totalHours"] == 5.5
+        assert {e["user"] for e in result["entries"]} == {"Rangeen Suresh", "Amal Prasad"}

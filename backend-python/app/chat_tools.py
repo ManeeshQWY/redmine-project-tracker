@@ -25,6 +25,7 @@ from .aggregations import (
     count_not_closed,
     resolution_time_stats,
 )
+from .data_store import load_time_entries
 from .models import Issue
 
 MAX_RESULTS = 15
@@ -71,7 +72,7 @@ def _detail(issue: Issue) -> dict:
     }
 
 
-def build_tools(issues: list[Issue]) -> tuple[list[Callable], dict]:
+def build_tools(issues: list[Issue], api_key: str, project_identifier: str) -> tuple[list[Callable], dict]:
     """Builds a fresh set of tool functions closing over this exact issue snapshot —
     called once per chat request, never shared or mutated across requests. Also returns
     a `filter_recorder` dict, auto-populated with search_tickets' filter args whenever a
@@ -79,7 +80,13 @@ def build_tools(issues: list[Issue]) -> tuple[list[Callable], dict]:
     returned) — read it back after the chat turn completes to offer a "view these in
     the Ticket Table" deep link. Tied directly to "there's more to see than what's
     shown inline" rather than relying on the model remembering to separately report
-    what it searched for, so it can't drift out of sync with what was actually shown."""
+    what it searched for, so it can't drift out of sync with what was actually shown.
+
+    api_key/project_identifier are only needed for get_time_entries_for_ticket, which —
+    unlike every other tool here — isn't a pure computation over the already-loaded
+    `issues` list: time entries are a separate, potentially large Redmine dataset
+    (deliberately not preloaded, same as the Time Spent by User tab), so that one tool
+    is async and lazily fetches (and caches, via data_store) only when actually called."""
     filter_recorder: dict = {}
     by_id = {issue.id: issue for issue in issues}
 
@@ -92,6 +99,23 @@ def build_tools(issues: list[Issue]) -> tuple[list[Callable], dict]:
         project (it may belong to a different project, or not exist)."""
         issue = by_id.get(ticket_id)
         return _detail(issue) if issue else {"found": False}
+
+    async def get_time_entries_for_ticket(ticket_id: int) -> dict:
+        """Look up individual time-log entries for one specific ticket — who logged how
+        many hours, and when. Use this (not get_ticket_by_id) whenever asked to break a
+        ticket's time down by person, since a ticket's own totalSpentHours is a sum
+        across everyone, not a per-person breakdown. Only works for a ticket_id that
+        exists in this project. May take a few seconds the first time it's called for
+        this project, since time entries aren't preloaded."""
+        if ticket_id not in by_id:
+            return {"found": False, "entries": []}
+        result = await load_time_entries(api_key, project_identifier, False)
+        matching = [e for e in result.timeEntries if e.issueId == ticket_id]
+        return {
+            "found": True,
+            "totalHours": round(sum(e.hours for e in matching), 2),
+            "entries": [{"user": e.user, "hours": e.hours, "activity": e.activity, "spentOn": e.spentOn} for e in matching],
+        }
 
     def get_ticket_counts() -> dict:
         """Total, open, and closed ticket counts for the current project."""
@@ -189,6 +213,7 @@ def build_tools(issues: list[Issue]) -> tuple[list[Callable], dict]:
 
     return [
         get_ticket_by_id,
+        get_time_entries_for_ticket,
         get_ticket_counts,
         get_status_breakdown,
         get_tracker_breakdown,

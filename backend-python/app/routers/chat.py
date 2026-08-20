@@ -30,7 +30,7 @@ async def chat_route(project_identifier: str, body: ChatRequest, session: Sessio
     # a project you're already viewing. Scoped to the whole project's tickets, not
     # whatever tracker/etc. filters happen to be active in the UI right now.
     result = await load_project_issues(session.api_key, project_identifier, False)
-    tools, filter_recorder = build_tools(result.issues)
+    tools, filter_recorder = build_tools(result.issues, session.api_key, project_identifier)
     project_label = "All Projects" if project_identifier == ALL_PROJECTS else project_identifier
 
     try:
@@ -42,9 +42,10 @@ async def chat_route(project_identifier: str, body: ChatRequest, session: Sessio
 
 
 def _to_suggested_filter(recorder: dict) -> dict | None:
-    """Maps set_ticket_table_filter's raw args onto the frontend's TicketFilters shape
-    (see frontend/src/utils/filters.ts) — tracker becomes a one-item `trackers` array
-    since that's the app's single global multi-select tracker filter."""
+    """Maps search_tickets' recorded filter args (see chat_tools.build_tools) onto the
+    frontend's TicketFilters shape (see frontend/src/utils/filters.ts) — tracker
+    becomes a one-item `trackers` array since that's the app's single global
+    multi-select tracker filter."""
     if not recorder:
         return None
     patch: dict = {}
