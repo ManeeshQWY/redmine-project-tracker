@@ -356,7 +356,14 @@ export default function App() {
 
                 {tab === "qa" && <QADashboard issues={filteredIssues} />}
 
-                {tab === "time" && <TimeSpentByUserPanel projectIdentifier={selectedProject} issues={issues} onSessionExpired={() => setUser(null)} />}
+                {tab === "time" && (
+                  <TimeSpentByUserPanel
+                    projectIdentifier={selectedProject}
+                    projectLabel={selectedProjectLabel}
+                    issues={issues}
+                    onSessionExpired={() => setUser(null)}
+                  />
+                )}
 
                 {tab === "closedTrend" && <ClosedTicketsTrendPanel issues={filteredIssues} />}
 

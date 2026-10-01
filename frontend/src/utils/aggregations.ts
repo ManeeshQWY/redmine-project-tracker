@@ -350,3 +350,45 @@ export function aggregateTimeByUser(timeEntries: TimeEntry[]): UserTimeSummaryRo
     }))
     .sort((a, b) => b.totalHours - a.totalHours);
 }
+
+export interface UserMonthRow {
+  monthKey: string; // "2026-08", sortable
+  monthLabel: string; // "Aug 2026"
+  byUser: Record<string, number>;
+  total: number;
+}
+
+/**
+ * Time entries grouped by the month they were logged in (spentOn), then by user —
+ * same monthKey/monthLabel shape as aggregateClosedByMonthAndTracker, so the two
+ * month-based panels in the app behave consistently. Entries with a missing/invalid
+ * spentOn are skipped (shouldn't happen — Redmine requires it — but kept defensive).
+ */
+export function aggregateTimeByUserAndMonth(timeEntries: TimeEntry[]): { rows: UserMonthRow[]; users: string[] } {
+  const userTotals = new Map<string, number>();
+  const monthMap = new Map<string, UserMonthRow>();
+
+  for (const entry of timeEntries) {
+    if (!entry.spentOn) continue;
+    const d = new Date(entry.spentOn);
+    if (Number.isNaN(d.getTime())) continue;
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const user = entry.user || "(blank)";
+
+    let row = monthMap.get(monthKey);
+    if (!row) {
+      row = { monthKey, monthLabel: d.toLocaleDateString("en-GB", { month: "short", year: "numeric" }), byUser: {}, total: 0 };
+      monthMap.set(monthKey, row);
+    }
+    row.byUser[user] = (row.byUser[user] ?? 0) + entry.hours;
+    row.total += entry.hours;
+    userTotals.set(user, (userTotals.get(user) ?? 0) + entry.hours);
+  }
+
+  const users = Array.from(userTotals.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([u]) => u);
+  const rows = Array.from(monthMap.values()).sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+
+  return { rows, users };
+}

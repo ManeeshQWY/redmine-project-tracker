@@ -10,12 +10,14 @@ import {
   countNotClosed,
   estimateVsActual,
   ticketAgeDays,
+  UserMonthRow,
+  UserTimeSummaryRow,
 } from "./aggregations";
 
 const HEADER_FILL: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1D4ED8" } };
 
-function styleHeaderRow(sheet: ExcelJS.Worksheet) {
-  const row = sheet.getRow(1);
+function styleHeaderRow(sheet: ExcelJS.Worksheet, rowNumber = 1) {
+  const row = sheet.getRow(rowNumber);
   row.font = { bold: true, color: { argb: "FFFFFFFF" } };
   row.fill = HEADER_FILL;
   row.alignment = { vertical: "middle" };
@@ -154,6 +156,21 @@ function addAgingSheet(workbook: ExcelJS.Workbook, issues: Issue[]) {
   styleHeaderRow(sheet);
 }
 
+async function downloadWorkbook(workbook: ExcelJS.Workbook, filenamePrefix: string, projectName: string) {
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const safeName = projectName.replace(/[^a-z0-9]+/gi, "_");
+  const dateStamp = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `${filenamePrefix}_${safeName}_${dateStamp}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function exportToExcel(issues: Issue[], redmineBaseUrl: string, projectName: string) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Redmine Project Tracker";
@@ -164,16 +181,54 @@ export async function exportToExcel(issues: Issue[], redmineBaseUrl: string, pro
   addTimeAnalysisSheet(workbook, issues);
   addAgingSheet(workbook, issues);
 
-  const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const safeName = projectName.replace(/[^a-z0-9]+/gi, "_");
-  const dateStamp = new Date().toISOString().slice(0, 10);
-  a.href = url;
-  a.download = `redmine_${safeName}_${dateStamp}.xlsx`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  await downloadWorkbook(workbook, "redmine", projectName);
+}
+
+function addTimeByUserSheet(workbook: ExcelJS.Workbook, rows: UserTimeSummaryRow[], scopeLabel: string) {
+  const sheet = workbook.addWorksheet("Time by User");
+  sheet.addRow([scopeLabel]);
+  sheet.addRow([]);
+  sheet.addRow(["User", "Total Hours", "Entries", "By Activity"]);
+  for (const r of rows) {
+    sheet.addRow([r.user, Number(r.totalHours.toFixed(2)), r.entryCount, r.byActivity.map((a) => `${a.activity}: ${a.hours.toFixed(2)}h`).join(", ")]);
+  }
+  sheet.getColumn(1).width = 24;
+  sheet.getColumn(2).width = 14;
+  sheet.getColumn(3).width = 10;
+  sheet.getColumn(4).width = 60;
+  styleHeaderRow(sheet, 3);
+}
+
+function addTimeByMonthSheet(workbook: ExcelJS.Workbook, rows: UserMonthRow[], users: string[]) {
+  const sheet = workbook.addWorksheet("Time by Month");
+  const header = ["Month", ...users, "Total"];
+  sheet.addRow(header);
+  for (const row of rows) {
+    sheet.addRow([row.monthLabel, ...users.map((u) => Number((row.byUser[u] ?? 0).toFixed(2))), Number(row.total.toFixed(2))]);
+  }
+  sheet.getColumn(1).width = 14;
+  for (let i = 2; i <= header.length; i++) sheet.getColumn(i).width = 14;
+  styleHeaderRow(sheet);
+}
+
+/**
+ * Exports exactly what the Time Spent by User panel currently shows — respects
+ * whatever Ticket ID / Month filter is active there, via the already-filtered rows
+ * the caller computed, not raw unfiltered data.
+ */
+export async function exportTimeSpentToExcel(
+  userRows: UserTimeSummaryRow[],
+  monthRows: UserMonthRow[],
+  monthUsers: string[],
+  scopeLabel: string,
+  projectName: string
+) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Redmine Project Tracker";
+  workbook.created = new Date();
+
+  addTimeByUserSheet(workbook, userRows, scopeLabel);
+  addTimeByMonthSheet(workbook, monthRows, monthUsers);
+
+  await downloadWorkbook(workbook, "redmine_time_spent", projectName);
 }
