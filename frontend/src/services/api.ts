@@ -1,4 +1,4 @@
-import { MetaResult, ProjectIssuesResult, ProjectMeta, TimeEntriesResult } from "../types/issue";
+import { MetaResult, ProjectIssuesResult, ProjectMeta, TimeEntriesResult, VersionMeta } from "../types/issue";
 import { TicketFilters } from "../utils/filters";
 
 // All Redmine access goes through our own backend at /api/* (proxied to
@@ -87,6 +87,12 @@ export function getProjectIssues(projectIdentifier: string, forceRefresh = false
  * if it fails or is slow, the loading screen just falls back to its generic message. */
 export function getIssueCount(projectIdentifier: string): Promise<number> {
   return getJson<{ totalCount: number }>(`/api/projects/${encodeURIComponent(projectIdentifier)}/issues/count`).then((r) => r.totalCount);
+}
+
+/** Release dates for the target versions on a project's tickets — fetched lazily (only
+ * when the Release Dashboard is opened) so it never slows the main ticket load. */
+export function getVersions(projectIdentifier: string): Promise<VersionMeta[]> {
+  return getJson<{ versions: VersionMeta[] }>(`/api/projects/${encodeURIComponent(projectIdentifier)}/versions`).then((r) => r.versions);
 }
 
 export interface ChatTurn {

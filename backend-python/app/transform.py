@@ -105,6 +105,7 @@ def transform_issue(raw: dict[str, Any], user_map: dict[int, str]) -> Issue:
         updatedOn=raw["updated_on"],
         assignedTo=_blank((raw.get("assigned_to") or {}).get("name")),
         targetVersion=_blank((raw.get("fixed_version") or {}).get("name")),
+        targetVersionId=(raw.get("fixed_version") or {}).get("id"),
         startDate=_blank(raw.get("start_date")),
         dueDate=_blank(raw.get("due_date")),
         closedOn=_blank(raw.get("closed_on")),

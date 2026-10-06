@@ -1,4 +1,4 @@
-import { Issue, TimeEntry } from "../types/issue";
+import { Issue, TimeEntry, VersionMeta } from "../types/issue";
 
 export interface CountBucket {
   key: string;
@@ -391,4 +391,17 @@ export function aggregateTimeByUserAndMonth(timeEntries: TimeEntry[]): { rows: U
   const rows = Array.from(monthMap.values()).sort((a, b) => a.monthKey.localeCompare(b.monthKey));
 
   return { rows, users };
+}
+
+/**
+ * Release date by version *name* (tickets and the release summary are grouped by name,
+ * not id). If two projects happen to have a same-named version, the first one that has
+ * a date wins; versions with no date set are simply absent from the map.
+ */
+export function releaseDatesByName(versions: VersionMeta[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const v of versions) {
+    if (v.dueDate && !map.has(v.name)) map.set(v.name, v.dueDate);
+  }
+  return map;
 }

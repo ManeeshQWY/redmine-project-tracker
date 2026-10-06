@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from ..data_store import load_project_issues
+from ..data_store import load_project_issues, load_versions
 from ..dependencies import require_session
 from ..redmine_service import get_issue_count
 from ..session_store import Session
@@ -21,3 +21,11 @@ async def get_issue_count_route(project_identifier: str, session: Session = Depe
 async def get_issues_route(project_identifier: str, refresh: str = "false", session: Session = Depends(require_session)):
     result = await load_project_issues(session.api_key, project_identifier, refresh == "true")
     return result
+
+
+# Lazy, separate from /issues so the (already slow) ticket load isn't made slower — the
+# Release Dashboard calls this only when that tab is opened.
+@router.get("/{project_identifier}/versions")
+async def get_versions_route(project_identifier: str, session: Session = Depends(require_session)):
+    versions = await load_versions(session.api_key, project_identifier)
+    return {"versions": versions}

@@ -22,6 +22,18 @@ def base_raw(**overrides):
     return raw
 
 
+class TestTargetVersionId:
+    def test_resolves_version_id_and_name_from_fixed_version(self):
+        issue = transform_issue(base_raw(fixed_version={"id": 7, "name": "Sprint 7"}), {})
+        assert issue.targetVersionId == 7
+        assert issue.targetVersion == "Sprint 7"
+
+    def test_none_when_no_target_version(self):
+        issue = transform_issue(base_raw(), {})
+        assert issue.targetVersionId is None
+        assert issue.targetVersion is None
+
+
 class TestParentId:
     def test_resolves_parent_id_when_issue_has_a_parent(self):
         raw = base_raw(parent={"id": 25132})

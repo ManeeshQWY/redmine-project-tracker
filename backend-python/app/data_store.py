@@ -1,7 +1,15 @@
 from .cache import InFlightGuard, TtlCache
 from .config import REDMINE_BASE_URL
-from .models import MetaResult, PriorityMeta, ProjectIssuesResult, ProjectMeta, StatusMeta, TimeEntriesResult, TrackerMeta
-from .redmine_service import get_priorities, get_project_issues, get_projects, get_statuses, get_time_entries, get_trackers
+from .models import MetaResult, PriorityMeta, ProjectIssuesResult, ProjectMeta, StatusMeta, TimeEntriesResult, TrackerMeta, VersionMeta
+from .redmine_service import (
+    get_priorities,
+    get_project_issues,
+    get_projects,
+    get_statuses,
+    get_time_entries,
+    get_trackers,
+    get_versions_by_ids,
+)
 
 ISSUES_TTL_SECONDS = 15 * 60  # filters/UI work off this without re-hitting Redmine
 META_TTL_SECONDS = 60 * 60
@@ -22,6 +30,7 @@ _statuses_cache: TtlCache[list[StatusMeta]] = TtlCache(META_TTL_SECONDS)
 _trackers_cache: TtlCache[list[TrackerMeta]] = TtlCache(META_TTL_SECONDS)
 _priorities_cache: TtlCache[list[PriorityMeta]] = TtlCache(META_TTL_SECONDS)
 _time_entries_cache: TtlCache[TimeEntriesResult] = TtlCache(TIME_ENTRIES_TTL_SECONDS)
+_versions_cache: TtlCache[list[VersionMeta]] = TtlCache(META_TTL_SECONDS)
 _issues_in_flight: InFlightGuard[ProjectIssuesResult] = InFlightGuard()
 _time_entries_in_flight: InFlightGuard[TimeEntriesResult] = InFlightGuard()
 
@@ -79,6 +88,20 @@ async def load_project_issues(api_key: str, project_identifier: str, force_refre
         return result
 
     return await _issues_in_flight.run(project_identifier, fetch)
+
+
+async def load_versions(api_key: str, project_identifier: str) -> list[VersionMeta]:
+    """Dates for every target version that appears on this project's tickets. Derived
+    from the (cached) issue list rather than a separate Redmine listing — see
+    get_versions_by_ids for why. Cached for an hour; version dates rarely change."""
+    cached = _versions_cache.get(project_identifier)
+    if cached is not None:
+        return cached
+    issues_result = await load_project_issues(api_key, project_identifier, False)
+    ids = [i.targetVersionId for i in issues_result.issues if i.targetVersionId is not None]
+    versions = await get_versions_by_ids(ids, api_key)
+    _versions_cache.set(project_identifier, versions)
+    return versions
 
 
 async def load_time_entries(api_key: str, project_identifier: str, force_refresh: bool) -> TimeEntriesResult:

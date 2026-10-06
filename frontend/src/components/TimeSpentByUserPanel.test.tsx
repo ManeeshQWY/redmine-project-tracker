@@ -29,6 +29,7 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
     updatedOn: "2026-01-01T00:00:00Z",
     assignedTo: null,
     targetVersion: null,
+    targetVersionId: null,
     startDate: null,
     dueDate: null,
     closedOn: null,
@@ -165,5 +166,47 @@ describe("TimeSpentByUserPanel", () => {
     const [userRows, monthRows] = exportSpy.mock.calls[0];
     expect(userRows[0].user).toBe("Alice");
     expect(monthRows[0].monthLabel).toBe("Jan 2026");
+  });
+
+  it("flags time logged without a ticket, lists it, and passes it to the export", async () => {
+    vi.spyOn(api, "getTimeEntries").mockResolvedValue({
+      timeEntries: [
+        makeTimeEntry({ id: 1, issueId: 5, user: "Alice", hours: 6, spentOn: "2026-01-10" }),
+        makeTimeEntry({ id: 2, issueId: null, user: "Bob", hours: 2, activity: "Meetings", comments: "Weekly sync", spentOn: "2026-01-12" }),
+      ],
+      totalCount: 2,
+      durationMs: 5,
+      fetchedAt: "2026-01-01T00:00:00Z",
+    });
+    const exportSpy = vi.spyOn(excelExport, "exportTimeSpentToExcel").mockResolvedValue(undefined);
+
+    render(<TimeSpentByUserPanel projectIdentifier="qdesk" projectLabel="QDesk" issues={[makeIssue({ id: 5 })]} onSessionExpired={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /load time data/i }));
+
+    await waitFor(() => expect(screen.getByText(/1 entry .* logged without a ticket/i)).toBeInTheDocument());
+    const noTicketTable = screen.getAllByRole("table")[2];
+    expect(within(noTicketTable).getByText("Weekly sync")).toBeInTheDocument();
+    expect(within(noTicketTable).queryByText("Alice")).not.toBeInTheDocument(); // ticket-linked entry excluded
+
+    fireEvent.click(screen.getByRole("button", { name: /export to excel/i }));
+    await waitFor(() => expect(exportSpy).toHaveBeenCalledTimes(1));
+    expect(exportSpy.mock.calls[0][3]).toHaveLength(1);
+  });
+
+  it("says so when no time is logged outside a ticket, and hides the section when scoped to one ticket", async () => {
+    vi.spyOn(api, "getTimeEntries").mockResolvedValue({
+      timeEntries: [makeTimeEntry({ id: 1, issueId: 5, user: "Alice", hours: 6 })],
+      totalCount: 1,
+      durationMs: 5,
+      fetchedAt: "2026-01-01T00:00:00Z",
+    });
+
+    render(<TimeSpentByUserPanel projectIdentifier="qdesk" projectLabel="QDesk" issues={[makeIssue({ id: 5 })]} onSessionExpired={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /load time data/i }));
+    await waitFor(() => expect(screen.getByText("No time is logged outside a ticket.")).toBeInTheDocument());
+    expect(screen.queryByText("Time Logged Without a Ticket")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/ticket id/i), { target: { value: "5" } });
+    await waitFor(() => expect(screen.queryByText("No time is logged outside a ticket.")).not.toBeInTheDocument());
   });
 });

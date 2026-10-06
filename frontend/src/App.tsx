@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ALL_PROJECTS, ApiError, CurrentUser, getCurrentUser, getIssueCount, getMeta, getProjectIssues, getProjects, logout } from "./services/api";
+import { ALL_PROJECTS, ApiError, CurrentUser, getCurrentUser, getIssueCount, getMeta, getVersions, getProjectIssues, getProjects, logout } from "./services/api";
 import { Issue, MetaResult, ProjectMeta } from "./types/issue";
 import { applyFilters, EMPTY_FILTERS, TicketFilters } from "./utils/filters";
 import { aggregateByStatus, aggregateByTracker, aggregateByPriority, aggregateByTargetVersion } from "./utils/aggregations";
@@ -166,6 +166,14 @@ export default function App() {
     }
   }
 
+  /** Release dates live on the versions, not the tickets, so they're fetched at export
+   * time (cached server-side after the first call). If that lookup fails the export still
+   * goes ahead — just without the date columns filled in. */
+  async function exportWithReleaseDates(redmineBaseUrl: string, projectIdentifier: string, projectLabel: string) {
+    const versions = await getVersions(projectIdentifier).catch(() => []);
+    await exportToExcel(filteredIssues, redmineBaseUrl, projectLabel, versions);
+  }
+
   const filteredIssues = useMemo(() => applyFilters(issues, filters), [issues, filters]);
   const priorityOrder = useMemo(() => (meta ? meta.priorities.map((p) => p.name) : []), [meta]);
   // Options come from the full unfiltered issue set (not filteredIssues) so the tracker
@@ -291,7 +299,7 @@ export default function App() {
                   lastFetchDurationMs={lastFetchDurationMs}
                   loading={loading}
                   onRefresh={() => loadIssues(selectedProject, true)}
-                  onExport={() => meta && exportToExcel(filteredIssues, meta.redmineBaseUrl, selectedProjectLabel)}
+                  onExport={() => meta && exportWithReleaseDates(meta.redmineBaseUrl, selectedProject, selectedProjectLabel)}
                   exportDisabled={loading || filteredIssues.length === 0}
                 />
               </div>
@@ -352,7 +360,7 @@ export default function App() {
                   </div>
                 )}
 
-                {tab === "release" && <ReleaseDashboard issues={filteredIssues} />}
+                {tab === "release" && <ReleaseDashboard issues={filteredIssues} projectIdentifier={selectedProject} />}
 
                 {tab === "qa" && <QADashboard issues={filteredIssues} />}
 

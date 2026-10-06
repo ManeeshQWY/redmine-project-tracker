@@ -2,7 +2,7 @@ import asyncio
 import time
 from typing import Any
 
-from .models import Issue, PriorityMeta, ProjectIssuesResult, ProjectMeta, StatusMeta, TimeEntriesResult, TrackerMeta
+from .models import Issue, PriorityMeta, ProjectIssuesResult, ProjectMeta, StatusMeta, TimeEntriesResult, TrackerMeta, VersionMeta
 from .redmine_client import ProgressCallback, fetch_all_paginated, request_json
 from .transform import transform_issue, transform_time_entry
 
@@ -95,6 +95,33 @@ async def get_global_user_map(api_key: str) -> dict[int, str]:
 
     await asyncio.gather(*(worker() for _ in range(min(concurrency, len(projects)))))
     return merged
+
+
+async def get_versions_by_ids(version_ids: list[int], api_key: str) -> list[VersionMeta]:
+    """Fetches each distinct version (target version / release) by id. Issues only carry
+    a version's id+name — its date (due_date) lives on the version itself. Fetching by
+    id (rather than a project's versions list) also covers versions that belong to a
+    subproject, which a parent project's /versions.json wouldn't include. Capped at 4
+    concurrent; a version that fails to load (e.g. no permission) is skipped, not fatal."""
+    results: list[VersionMeta] = []
+    pending = list(dict.fromkeys(version_ids))
+    lock = asyncio.Lock()
+
+    async def worker() -> None:
+        while True:
+            async with lock:
+                if not pending:
+                    return
+                version_id = pending.pop(0)
+            try:
+                res = await request_json(f"/versions/{version_id}.json", api_key)
+                v = res["version"]
+                results.append(VersionMeta(id=v["id"], name=v["name"], dueDate=v.get("due_date") or None, status=v.get("status")))
+            except Exception as err:
+                print(f"[redmine] Failed to load version {version_id}: {err}")
+
+    await asyncio.gather(*(worker() for _ in range(min(4, len(pending)))))
+    return results
 
 
 async def get_issue_count(project_identifier: str | None, api_key: str) -> int:

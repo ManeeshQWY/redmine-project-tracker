@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { Issue } from "../types/issue";
+import { Issue, TimeEntry, VersionMeta } from "../types/issue";
 import {
   aggregateByPriority,
   aggregateByRelease,
@@ -9,6 +9,7 @@ import {
   countClosed,
   countNotClosed,
   estimateVsActual,
+  releaseDatesByName,
   ticketAgeDays,
   UserMonthRow,
   UserTimeSummaryRow,
@@ -23,7 +24,7 @@ function styleHeaderRow(sheet: ExcelJS.Worksheet, rowNumber = 1) {
   row.alignment = { vertical: "middle" };
 }
 
-function addMasterSheet(workbook: ExcelJS.Workbook, issues: Issue[], redmineBaseUrl: string) {
+function addMasterSheet(workbook: ExcelJS.Workbook, issues: Issue[], redmineBaseUrl: string, releaseDates: Map<string, string>) {
   const sheet = workbook.addWorksheet("Master Tickets");
   sheet.columns = [
     { header: "Ticket ID", key: "id", width: 10 },
@@ -40,6 +41,7 @@ function addMasterSheet(workbook: ExcelJS.Workbook, issues: Issue[], redmineBase
     { header: "Updated On", key: "updatedOn", width: 14 },
     { header: "Assigned To", key: "assignedTo", width: 18 },
     { header: "Target Version", key: "targetVersion", width: 20 },
+    { header: "Release Date", key: "releaseDate", width: 14 },
     { header: "Start Date", key: "startDate", width: 12 },
     { header: "Due Date", key: "dueDate", width: 12 },
     { header: "Closed On", key: "closedOn", width: 14 },
@@ -68,6 +70,7 @@ function addMasterSheet(workbook: ExcelJS.Workbook, issues: Issue[], redmineBase
       updatedOn: issue.updatedOn?.slice(0, 10) ?? "",
       assignedTo: issue.assignedTo ?? "",
       targetVersion: issue.targetVersion ?? "",
+      releaseDate: (issue.targetVersion && releaseDates.get(issue.targetVersion)) || "",
       startDate: issue.startDate ?? "",
       dueDate: issue.dueDate ?? "",
       closedOn: issue.closedOn ?? "",
@@ -83,15 +86,16 @@ function addMasterSheet(workbook: ExcelJS.Workbook, issues: Issue[], redmineBase
     row.getCell("link").value = { text: `#${issue.id}`, hyperlink: `${redmineBaseUrl}/issues/${issue.id}` };
   }
   styleHeaderRow(sheet);
-  sheet.autoFilter = { from: "A1", to: `Y1` };
+  sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: sheet.columns.length } };
 }
 
-function addSummarySheet(workbook: ExcelJS.Workbook, issues: Issue[]) {
+function addSummarySheet(workbook: ExcelJS.Workbook, issues: Issue[], releaseDates: Map<string, string>) {
   const sheet = workbook.addWorksheet("Summary");
   sheet.columns = [
     { header: "Metric / Group", key: "metric", width: 30 },
     { header: "Value / Count", key: "value", width: 15 },
     { header: "Percent", key: "percent", width: 12 },
+    { header: "Release Date", key: "releaseDate", width: 14 },
   ];
   sheet.addRow({ metric: "Total Tickets", value: issues.length });
   sheet.addRow({ metric: "Closed", value: countClosed(issues) });
@@ -109,7 +113,7 @@ function addSummarySheet(workbook: ExcelJS.Workbook, issues: Issue[]) {
   sheet.addRow({ metric: "Release Summary" }).font = { bold: true };
   sheet.addRow({ metric: "Release", value: "Total / Closed / Not Closed" });
   for (const r of aggregateByRelease(issues)) {
-    sheet.addRow({ metric: r.version, value: r.total, percent: `${r.closed} closed / ${r.notClosed} pending` });
+    sheet.addRow({ metric: r.version, value: r.total, percent: `${r.closed} closed / ${r.notClosed} pending`, releaseDate: releaseDates.get(r.version) ?? "" });
   }
   styleHeaderRow(sheet);
 }
@@ -171,13 +175,14 @@ async function downloadWorkbook(workbook: ExcelJS.Workbook, filenamePrefix: stri
   URL.revokeObjectURL(url);
 }
 
-export async function exportToExcel(issues: Issue[], redmineBaseUrl: string, projectName: string) {
+export async function exportToExcel(issues: Issue[], redmineBaseUrl: string, projectName: string, versions: VersionMeta[] = []) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Redmine Project Tracker";
   workbook.created = new Date();
 
-  addMasterSheet(workbook, issues, redmineBaseUrl);
-  addSummarySheet(workbook, issues);
+  const releaseDates = releaseDatesByName(versions);
+  addMasterSheet(workbook, issues, redmineBaseUrl, releaseDates);
+  addSummarySheet(workbook, issues, releaseDates);
   addTimeAnalysisSheet(workbook, issues);
   addAgingSheet(workbook, issues);
 
@@ -197,6 +202,16 @@ function addTimeByUserSheet(workbook: ExcelJS.Workbook, rows: UserTimeSummaryRow
   sheet.getColumn(3).width = 10;
   sheet.getColumn(4).width = 60;
   styleHeaderRow(sheet, 3);
+}
+
+function addNoTicketTimeSheet(workbook: ExcelJS.Workbook, entries: TimeEntry[]) {
+  const sheet = workbook.addWorksheet("No-Ticket Time");
+  sheet.addRow(["Date", "User", "Project", "Activity", "Hours", "Comment"]);
+  for (const e of entries) {
+    sheet.addRow([e.spentOn, e.user, e.project, e.activity, Number(e.hours.toFixed(2)), e.comments ?? ""]);
+  }
+  [12, 24, 24, 20, 10, 60].forEach((w, i) => (sheet.getColumn(i + 1).width = w));
+  styleHeaderRow(sheet);
 }
 
 function addTimeByMonthSheet(workbook: ExcelJS.Workbook, rows: UserMonthRow[], users: string[]) {
@@ -220,6 +235,7 @@ export async function exportTimeSpentToExcel(
   userRows: UserTimeSummaryRow[],
   monthRows: UserMonthRow[],
   monthUsers: string[],
+  noTicketEntries: TimeEntry[],
   scopeLabel: string,
   projectName: string
 ) {
@@ -229,6 +245,7 @@ export async function exportTimeSpentToExcel(
 
   addTimeByUserSheet(workbook, userRows, scopeLabel);
   addTimeByMonthSheet(workbook, monthRows, monthUsers);
+  addNoTicketTimeSheet(workbook, noTicketEntries);
 
   await downloadWorkbook(workbook, "redmine_time_spent", projectName);
 }

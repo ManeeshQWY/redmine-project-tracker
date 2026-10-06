@@ -3,7 +3,7 @@ import { ALL_PROJECTS, ApiError, getTimeEntries } from "../services/api";
 import { Issue, TimeEntry } from "../types/issue";
 import { aggregateTimeByUser, aggregateTimeByUserAndMonth } from "../utils/aggregations";
 import { exportTimeSpentToExcel } from "../utils/excelExport";
-import { formatDateTime, formatHours } from "../utils/format";
+import { blank, formatDate, formatDateTime, formatHours } from "../utils/format";
 
 interface Props {
   projectIdentifier: string;
@@ -141,6 +141,17 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
 
   const rows = aggregateTimeByUser(monthFilteredEntries);
   const grandTotal = rows.reduce((sum, r) => sum + r.totalHours, 0);
+
+  // Time logged straight against the project instead of a ticket (Redmine allows
+  // this — the entry just has no issue). Only meaningful when not already narrowed to
+  // one ticket (a ticket scope can't contain ticket-less entries by definition), so it's
+  // hidden then rather than showing a misleading "none".
+  const noTicketEntries =
+    rootTicketId === null
+      ? monthFilteredEntries.filter((e) => e.issueId === null).sort((a, b) => b.spentOn.localeCompare(a.spentOn))
+      : [];
+  const noTicketHours = noTicketEntries.reduce((sum, e) => sum + e.hours, 0);
+  const noTicketShare = grandTotal > 0 ? (noTicketHours / grandTotal) * 100 : 0;
   // The monthly breakdown always shows the full month range within the current ticket
   // scope — not narrowed by monthFilter too, since collapsing it to one row would
   // defeat the point of a month-by-month split. The Month filter is for narrowing the
@@ -156,7 +167,7 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
       const scopeParts = [`Project: ${projectLabel || projectIdentifier}`];
       scopeParts.push(rootTicketId !== null ? `Ticket #${rootTicketId}${childCount > 0 ? ` + ${childCount} child ticket${childCount === 1 ? "" : "s"}` : ""}` : "All tickets");
       scopeParts.push(monthFilter ? `Month: ${availableMonths.find(([k]) => k === monthFilter)?.[1] ?? monthFilter}` : "All months");
-      await exportTimeSpentToExcel(rows, monthBreakdown.rows, monthBreakdown.users, scopeParts.join(" · "), projectLabel || projectIdentifier);
+      await exportTimeSpentToExcel(rows, monthBreakdown.rows, monthBreakdown.users, noTicketEntries, scopeParts.join(" · "), projectLabel || projectIdentifier);
     } finally {
       setExporting(false);
     }
@@ -237,6 +248,16 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
           )}
         </div>
 
+        {rootTicketId === null && (
+          <p
+            className={`mb-3 text-xs ${noTicketEntries.length > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-400 dark:text-slate-500"}`}
+          >
+            {noTicketEntries.length > 0
+              ? `${noTicketEntries.length.toLocaleString()} entr${noTicketEntries.length === 1 ? "y" : "ies"} (${formatHours(noTicketHours)}h, ${noTicketShare.toFixed(1)}% of the hours shown) logged without a ticket — see "Time Logged Without a Ticket" below.`
+              : "No time is logged outside a ticket."}
+          </p>
+        )}
+
         <div className="max-h-[480px] overflow-auto">
           <table className="w-full text-left text-xs">
             <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
@@ -312,6 +333,41 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
           </table>
         </div>
       </div>
+
+      {rootTicketId === null && noTicketEntries.length > 0 && (
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <h3 className="mb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">Time Logged Without a Ticket</h3>
+          <p className="mb-3 text-[11px] text-slate-400 dark:text-slate-500">
+            Entries logged directly against the project rather than a ticket{monthFilter ? " (for the selected month)" : ""}, newest first.
+          </p>
+          <div className="max-h-[480px] overflow-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                <tr>
+                  <th className="px-2 py-1.5">Date</th>
+                  <th className="px-2 py-1.5">User</th>
+                  <th className="px-2 py-1.5">Project</th>
+                  <th className="px-2 py-1.5">Activity</th>
+                  <th className="px-2 py-1.5 text-right">Hours</th>
+                  <th className="px-2 py-1.5">Comment</th>
+                </tr>
+              </thead>
+              <tbody>
+                {noTicketEntries.map((e) => (
+                  <tr key={e.id} className="border-t border-slate-100 dark:border-slate-800">
+                    <td className="whitespace-nowrap px-2 py-1.5">{formatDate(e.spentOn)}</td>
+                    <td className="px-2 py-1.5">{e.user}</td>
+                    <td className="px-2 py-1.5">{blank(e.project)}</td>
+                    <td className="px-2 py-1.5">{blank(e.activity)}</td>
+                    <td className="px-2 py-1.5 text-right font-medium">{formatHours(e.hours)}</td>
+                    <td className="px-2 py-1.5 text-slate-500 dark:text-slate-400">{blank(e.comments)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

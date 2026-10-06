@@ -32,6 +32,7 @@ class Issue(BaseModel):
     updatedOn: str
     assignedTo: str | None = None
     targetVersion: str | None = None
+    targetVersionId: int | None = None
     startDate: str | None = None
     dueDate: str | None = None
     closedOn: str | None = None
@@ -49,6 +50,13 @@ class Issue(BaseModel):
     additionalAssignees: list[AssigneeRef] = []
     estimatedTimeForQA: str | None = None
     customFields: list[CustomFieldValue] = []
+
+
+class VersionMeta(BaseModel):
+    id: int
+    name: str
+    dueDate: str | None = None  # Redmine's version "due_date" (a.k.a. effective date)
+    status: str | None = None  # open | locked | closed
 
 
 class TimeEntry(BaseModel):

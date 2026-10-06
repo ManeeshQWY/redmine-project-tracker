@@ -28,6 +28,7 @@ export interface Issue {
   updatedOn: string;
   assignedTo: string | null;
   targetVersion: string | null;
+  targetVersionId: number | null;
   startDate: string | null;
   dueDate: string | null;
   closedOn: string | null;
@@ -79,6 +80,13 @@ export interface MetaResult {
   trackers: TrackerMeta[];
   priorities: PriorityMeta[];
   redmineBaseUrl: string;
+}
+
+export interface VersionMeta {
+  id: number;
+  name: string;
+  dueDate: string | null; // Redmine's version due_date — the release date
+  status: string | null; // open | locked | closed
 }
 
 /** Who actually logged time, not who an issue is assigned to. */

@@ -2,7 +2,7 @@ import httpx
 import pytest
 import respx
 
-from app.redmine_service import get_issue_count
+from app.redmine_service import get_issue_count, get_versions_by_ids
 
 BASE_URL = "https://redmine.test"
 
@@ -30,3 +30,35 @@ class TestGetIssueCount:
         total = await get_issue_count(None, "test-key")
         assert total == 19639
         assert "project_id" not in str(route.calls[0].request.url)
+
+
+class TestGetVersionsByIds:
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_fetches_each_distinct_version_once_and_maps_due_date(self):
+        route7 = respx.get(f"{BASE_URL}/versions/7.json").mock(
+            return_value=httpx.Response(200, json={"version": {"id": 7, "name": "Sprint 7", "due_date": "2026-03-31", "status": "closed"}})
+        )
+        respx.get(f"{BASE_URL}/versions/8.json").mock(
+            return_value=httpx.Response(200, json={"version": {"id": 8, "name": "Sprint 8", "due_date": None, "status": "open"}})
+        )
+        versions = await get_versions_by_ids([7, 8, 7, 7], "test-key")
+        by_id = {v.id: v for v in versions}
+        assert route7.call_count == 1  # duplicates collapsed
+        assert by_id[7].dueDate == "2026-03-31"
+        assert by_id[7].status == "closed"
+        assert by_id[8].dueDate is None  # version exists but has no date set
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_a_version_that_fails_to_load_is_skipped_not_fatal(self):
+        respx.get(f"{BASE_URL}/versions/1.json").mock(return_value=httpx.Response(403, json={}))
+        respx.get(f"{BASE_URL}/versions/2.json").mock(
+            return_value=httpx.Response(200, json={"version": {"id": 2, "name": "Ok", "due_date": "2026-01-01", "status": "open"}})
+        )
+        versions = await get_versions_by_ids([1, 2], "test-key")
+        assert [v.id for v in versions] == [2]
+
+    @pytest.mark.asyncio
+    async def test_no_ids_makes_no_requests(self):
+        assert await get_versions_by_ids([], "test-key") == []
