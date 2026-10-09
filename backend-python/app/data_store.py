@@ -35,12 +35,18 @@ _issues_in_flight: InFlightGuard[ProjectIssuesResult] = InFlightGuard()
 _time_entries_in_flight: InFlightGuard[TimeEntriesResult] = InFlightGuard()
 
 
-async def load_projects(api_key: str) -> list[ProjectMeta]:
-    cached = _projects_cache.get(SHARED_KEY)
+async def load_projects(api_key: str, user_id: int) -> list[ProjectMeta]:
+    # Keyed per user, NOT shared like the other meta caches: Redmine returns only the
+    # projects the calling API key can see, so this list differs between people. Sharing
+    # it meant whoever logged in first fixed the list everyone else got for the next
+    # hour — a user with access to more projects never saw them. (A project list is
+    # small, so the per-user memory cost is negligible.)
+    key = f"user:{user_id}"
+    cached = _projects_cache.get(key)
     if cached is not None:
         return cached
     projects = await get_projects(api_key)
-    _projects_cache.set(SHARED_KEY, projects)
+    _projects_cache.set(key, projects)
     return projects
 
 

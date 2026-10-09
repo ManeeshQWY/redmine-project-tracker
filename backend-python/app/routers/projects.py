@@ -9,5 +9,5 @@ router = APIRouter(prefix="/api/projects")
 
 @router.get("")
 async def get_projects_route(session: Session = Depends(require_session)):
-    projects = await load_projects(session.api_key)
+    projects = await load_projects(session.api_key, session.user.id)
     return {"projects": projects}
