@@ -382,6 +382,7 @@ export default function App() {
                     projectLabel={selectedProjectLabel}
                     redmineBaseUrl={meta?.redmineBaseUrl ?? ""}
                     issues={issues}
+                    trackers={filters.trackers}
                     onSessionExpired={() => setUser(null)}
                   />
                 )}

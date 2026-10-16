@@ -3,6 +3,7 @@ import { Issue, TimeEntry } from "../types/issue";
 import {
   buildPerformanceRows,
   buildRoleLookup,
+  bugLinkStats,
   DateRange,
   EMPTY_PERFORMANCE_FILTERS,
   filterPerformanceRows,
@@ -215,12 +216,80 @@ describe("buildPerformanceRows — figures", () => {
     expect(rowFor(rows, 1, "Rita PM")).toBeUndefined();
   });
 
-  it("counts a bug filed by a QA who is not attached to any ticket, if the list says QA", () => {
+  it("does not credit a QA for a bug on a ticket they are not working on", () => {
+    const issues = [
+      issue({ id: 1, assignedTo: "Dev Dan" }), // Quinn is neither named on it nor logged time
+      issue({ id: 2, parentId: 1, tracker: "Bug", author: "Quinn QA" }),
+    ];
+    expect(rowFor(build(issues), 1, "Quinn QA")).toBeUndefined();
+  });
+
+  it("credits a QA who logged time on the ticket even if they are not named on it", () => {
     const issues = [
       issue({ id: 1, assignedTo: "Dev Dan" }),
       issue({ id: 2, parentId: 1, tracker: "Bug", author: "Quinn QA" }),
     ];
+    const rows = build(issues, [entry({ id: 1, issueId: 1, user: "Quinn QA", hours: 1 })]);
+    expect(rowFor(rows, 1, "Quinn QA")!.bugsReported).toBe(1);
+  });
+
+  it("credits a QA for a bug on a child ticket they are working on, within the parent task", () => {
+    const issues = [
+      issue({ id: 1, tracker: "Epic", assignedTo: "Dev Dan" }),
+      issue({ id: 2, parentId: 1, assignedQAs: [qa("Quinn QA")] }),
+      issue({ id: 3, parentId: 2, tracker: "Bug", author: "Quinn QA" }),
+    ];
     expect(rowFor(build(issues), 1, "Quinn QA")!.bugsReported).toBe(1);
+  });
+
+  it("does not credit a QA for a bug on a sibling ticket they are not working on", () => {
+    const issues = [
+      issue({ id: 1, tracker: "Epic", assignedTo: "Dev Dan" }),
+      issue({ id: 2, parentId: 1, assignedQAs: [qa("Quinn QA")] }),
+      issue({ id: 4, parentId: 1, assignedTo: "Dev Dee" }), // Quinn has nothing to do with #4
+      issue({ id: 5, parentId: 4, tracker: "Bug", author: "Quinn QA" }),
+    ];
+    // Quinn is on #2 only; the bug sits under #4, which is not above #2
+    expect(rowFor(build(issues), 1, "Quinn QA")!.bugsReported).toBe(0);
+  });
+
+  it("ignores bugs with status Not a bug — for the developer, the QA and the CT count", () => {
+    const ct = [{ id: 9, name: "Testing Type", value: ["CT"] }];
+    const issues = [
+      issue({ id: 1, assignedTo: "Dev Dan", assignedQAs: [qa("Quinn QA")] }),
+      issue({ id: 2, parentId: 1, tracker: "Bug", author: "Quinn QA", status: "New", customFields: ct }),
+      issue({ id: 3, parentId: 1, tracker: "Bug", author: "Quinn QA", status: "Not a bug", customFields: ct }),
+      issue({ id: 4, parentId: 1, tracker: "Bug", author: "Quinn QA", status: "NOT A BUG" }),
+      issue({ id: 5, parentId: 1, tracker: "Bug", author: "Quinn QA", status: "Not a Bug " }),
+    ];
+    const rows = build(issues);
+    for (const name of ["Dev Dan", "Quinn QA"]) {
+      const row = rowFor(rows, 1, name)!;
+      expect(row.bugsReported).toBe(1);
+      expect(row.ctBugs).toBe(1);
+    }
+  });
+
+  it("still counts bugs with other closed statuses", () => {
+    const issues = [
+      issue({ id: 1, assignedTo: "Dev Dan" }),
+      issue({ id: 2, parentId: 1, tracker: "Bug", status: "Closed", statusIsClosed: true }),
+      issue({ id: 3, parentId: 1, tracker: "Bug", status: "Rejected" }),
+    ];
+    expect(rowFor(build(issues), 1, "Dev Dan")!.bugsReported).toBe(2);
+  });
+
+  it("an activity window does not change who counts as working on a ticket", () => {
+    const issues = [
+      issue({ id: 1, assignedTo: "Dev Dan" }),
+      issue({ id: 2, parentId: 1, tracker: "Bug", author: "Quinn QA", createdOn: "2026-03-20T00:00:00Z" }),
+    ];
+    // Quinn's only time on the ticket was in February, outside the March window
+    const rows = build(issues, [entry({ id: 1, issueId: 1, user: "Quinn QA", hours: 1, spentOn: "2026-02-10" })], {
+      from: "2026-03-01",
+      to: "2026-03-31",
+    });
+    expect(rowFor(rows, 1, "Quinn QA")!.bugsReported).toBe(1);
   });
 
   it("counts CT bugs from the Testing Type custom field", () => {
@@ -389,5 +458,49 @@ describe("filter / group / sort", () => {
   it("sorts numerically and in both directions", () => {
     expect(sortPerformanceRows(rows, "actuals", "desc").map((r) => r.actuals)).toEqual([4, 2, 1]);
     expect(sortPerformanceRows(rows, "actuals", "asc").map((r) => r.actuals)).toEqual([1, 2, 4]);
+  });
+});
+
+describe("bugLinkStats", () => {
+  const ct = [{ id: 9, name: "Testing Type", value: ["CT"] }];
+
+  it("separates bugs that sit under a task from those that cannot be credited to anyone", () => {
+    const stats = bugLinkStats([
+      issue({ id: 1, tracker: "Story" }),
+      issue({ id: 2, parentId: 1, tracker: "Bug", customFields: ct }), // linked, CT
+      issue({ id: 3, parentId: 1, tracker: "Bug" }), // linked
+      issue({ id: 4, tracker: "Bug", customFields: ct }), // no parent, CT
+      issue({ id: 5, tracker: "Test Case" }),
+      issue({ id: 6, parentId: 5, tracker: "Bug" }), // only under a non-task ticket
+    ]);
+    expect(stats).toEqual({ bugs: 4, ctBugs: 2, unlinkedBugs: 2, unlinkedCtBugs: 1 });
+  });
+
+  it("treats a bug under a non-task ticket as linked when that ticket is itself under a task", () => {
+    const stats = bugLinkStats([
+      issue({ id: 1, tracker: "Epic" }),
+      issue({ id: 2, parentId: 1, tracker: "Test Case" }),
+      issue({ id: 3, parentId: 2, tracker: "Bug" }),
+    ]);
+    expect(stats.unlinkedBugs).toBe(0);
+  });
+
+  it("leaves Not a bug out of the totals", () => {
+    const stats = bugLinkStats([
+      issue({ id: 1, tracker: "Story" }),
+      issue({ id: 2, parentId: 1, tracker: "Bug" }),
+      issue({ id: 3, parentId: 1, tracker: "Bug", status: "Not a bug", customFields: ct }),
+      issue({ id: 4, tracker: "Bug", status: "Not a bug" }),
+    ]);
+    expect(stats).toEqual({ bugs: 1, ctBugs: 0, unlinkedBugs: 0, unlinkedCtBugs: 0 });
+  });
+
+  it("does not loop on a parent cycle", () => {
+    const stats = bugLinkStats([
+      issue({ id: 1, parentId: 2, tracker: "Test Case" }),
+      issue({ id: 2, parentId: 1, tracker: "Test Case" }),
+      issue({ id: 3, parentId: 1, tracker: "Bug" }),
+    ]);
+    expect(stats.unlinkedBugs).toBe(1);
   });
 });

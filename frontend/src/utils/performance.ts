@@ -50,6 +50,15 @@ function isBug(issue: Issue): boolean {
   return normalizeTracker(issue.tracker) === "bug";
 }
 
+/** Bugs closed as "Not a bug" were never defects, so they count for no one — neither the
+ * developer whose ticket it was raised against nor the QA who raised it. Matched ignoring
+ * case, spacing and punctuation. */
+const EXCLUDED_BUG_STATUSES = new Set(["notabug"]);
+
+function isCountedBug(issue: Issue): boolean {
+  return isBug(issue) && !EXCLUDED_BUG_STATUSES.has(issue.status.toLowerCase().replace(/[^a-z]/g, ""));
+}
+
 /** The "Testing Type" custom field marks a bug as CT when any of its values is "CT". */
 function isCtBug(issue: Issue): boolean {
   const field = issue.customFields.find((f) => f.name.trim().toLowerCase() === "testing type");
@@ -141,7 +150,8 @@ function workersOf(issue: Issue): string[] {
  *   its Assignee / Additional Assignees not yet in the list share the estimate instead.
  * - Actuals: that person's logged hours across the subtree, whether or not attached.
  * - Bugs reported: Developer (and anyone not in the list) — Bug tickets that sit under a
- *   ticket they are attached to; QA — Bug tickets they filed (author) under the task. CT Bugs is the subset marked
+ *   ticket they are attached to; QA — Bug tickets they filed (author) under a ticket they
+ *   are working on. Bugs with status "Not a bug" never count. CT Bugs is the subset marked
  *   Testing Type = CT.
  *
  * `range` limits time entries by spent-on date and bugs by created-on date; when active,
@@ -171,7 +181,17 @@ export function buildPerformanceRows(
     hoursByIssue.set(entry.issueId, perUser);
   }
 
-  const ctBugIds = new Set(issues.filter((i) => isBug(i) && isCtBug(i)).map((i) => i.id));
+  const ctBugIds = new Set(issues.filter((i) => isCountedBug(i) && isCtBug(i)).map((i) => i.id));
+
+  // Who has logged time on each ticket, over ALL dates: a QA "working on" a ticket is
+  // part of who they are on it, not something the activity window should change.
+  const loggersByIssue = new Map<number, Set<string>>();
+  for (const entry of timeEntries) {
+    if (entry.issueId === null) continue;
+    const names = loggersByIssue.get(entry.issueId) ?? new Set<string>();
+    names.add(entry.user);
+    loggersByIssue.set(entry.issueId, names);
+  }
   const issueById = new Map(issues.map((i) => [i.id, i]));
   const ancestorsOf = (issue: Issue): number[] => {
     const chain: number[] = [];
@@ -252,22 +272,31 @@ export function buildPerformanceRows(
     // is credited to each Developer attached to a ticket above it. Each bug is counted
     // once per row.
     const walked = new Set<number>([task.id]);
-    const walk = (node: Issue, attachedAbove: Set<string>) => {
+    const walk = (node: Issue, attachedAbove: Set<string>, loggedAbove: Set<string>) => {
       for (const child of childrenByParent.get(node.id) ?? []) {
         if (walked.has(child.id)) continue;
         walked.add(child.id);
-        if (isBug(child) && inRange(child.createdOn, range)) {
+        if (isCountedBug(child) && inRange(child.createdOn, range)) {
           // Developers — and people not in the master list, so their bugs aren't silently
           // shown as zero — are credited with bugs under a ticket they are attached to.
           for (const name of attachedAbove) {
             if (roleOf(name) !== "QA") slot(name).bugIds.add(child.id);
           }
-          if (child.author && roleOf(child.author) === "QA") slot(child.author).bugIds.add(child.id);
+          // QA — only for a bug they raised against a ticket they are working on (named on
+          // it or has logged time on it, or on a ticket above it), not any bug they filed.
+          const author = child.author;
+          if (author && roleOf(author) === "QA" && (attachedAbove.has(author) || loggedAbove.has(author))) {
+            slot(author).bugIds.add(child.id);
+          }
         }
-        walk(child, new Set([...attachedAbove, ...attachedNames(child)]));
+        walk(
+          child,
+          new Set([...attachedAbove, ...attachedNames(child)]),
+          new Set([...loggedAbove, ...(loggersByIssue.get(child.id) ?? [])])
+        );
       }
     };
-    walk(task, new Set(attachedNames(task)));
+    walk(task, new Set(attachedNames(task)), new Set(loggersByIssue.get(task.id) ?? []));
 
     for (const a of acc.values()) {
       const hasActivity = a.hours > 0 || a.bugIds.size > 0;
@@ -295,6 +324,47 @@ export function buildPerformanceRows(
   }
 
   return rows;
+}
+
+export interface BugLinkStats {
+  bugs: number;
+  ctBugs: number;
+  unlinkedBugs: number; // not under any task row, so no one can be credited with them
+  unlinkedCtBugs: number;
+}
+
+/** How many of the project's bugs can actually be attributed. A bug only counts for
+ * someone when one of its ancestors is a task row, so bugs with no parent (or only under
+ * non-task tickets such as Test Case) are invisible to the report — this makes that gap
+ * visible instead of leaving "0 CT" unexplained. */
+export function bugLinkStats(issues: Issue[]): BugLinkStats {
+  const byId = new Map(issues.map((i) => [i.id, i]));
+  const stats: BugLinkStats = { bugs: 0, ctBugs: 0, unlinkedBugs: 0, unlinkedCtBugs: 0 };
+  for (const bug of issues) {
+    if (!isCountedBug(bug)) continue;
+    const ct = isCtBug(bug);
+    stats.bugs += 1;
+    if (ct) stats.ctBugs += 1;
+
+    let linked = false;
+    let parentId = bug.parentId;
+    const seen = new Set<number>();
+    while (parentId != null && !seen.has(parentId)) {
+      seen.add(parentId);
+      const parent = byId.get(parentId);
+      if (!parent) break;
+      if (isTaskTracker(parent.tracker)) {
+        linked = true;
+        break;
+      }
+      parentId = parent.parentId;
+    }
+    if (!linked) {
+      stats.unlinkedBugs += 1;
+      if (ct) stats.unlinkedCtBugs += 1;
+    }
+  }
+  return stats;
 }
 
 export interface PerformanceFilters {

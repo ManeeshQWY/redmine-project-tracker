@@ -6,6 +6,7 @@ import { formatDateTime, formatHours } from "../utils/format";
 import {
   buildPerformanceRows,
   buildRoleLookup,
+  bugLinkStats,
   EMPTY_PERFORMANCE_FILTERS,
   filterPerformanceRows,
   GROUP_LABELS,
@@ -29,6 +30,9 @@ interface Props {
   // Full unfiltered project issues — parent/child consolidation must see every ticket
   // regardless of the global tracker filter, same reasoning as the Time Spent panel.
   issues: Issue[];
+  // The app-wide Tracker chips. Applied to which TASKS get a row (a Bug filter shows only
+  // Bug tasks); consolidation still reads every ticket so a parent's totals stay whole.
+  trackers?: string[];
   onSessionExpired: () => void;
 }
 
@@ -250,7 +254,7 @@ function allGroupIds(groups: PerformanceGroup[]): string[] {
   return groups.flatMap((g) => [g.id, ...allGroupIds(g.children)]);
 }
 
-export default function PerformanceDashboard({ projectIdentifier, projectLabel, redmineBaseUrl, issues, onSessionExpired }: Props) {
+export default function PerformanceDashboard({ projectIdentifier, projectLabel, redmineBaseUrl, issues, trackers = [], onSessionExpired }: Props) {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -297,7 +301,13 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
     () => Array.from(new Set(allRows.filter((r) => r.role === "Unknown").map((r) => r.name))).sort((a, b) => a.localeCompare(b)),
     [allRows]
   );
-  const filteredRows = useMemo(() => filterPerformanceRows(allRows, applied.filters), [allRows, applied.filters]);
+  // The app-wide Tracker chips decide which tasks have rows at all.
+  const scopedRows = useMemo(
+    () => (trackers.length > 0 ? allRows.filter((r) => trackers.includes(r.tracker || "(blank)")) : allRows),
+    [allRows, trackers]
+  );
+  const filteredRows = useMemo(() => filterPerformanceRows(scopedRows, applied.filters), [scopedRows, applied.filters]);
+  const linkStats = useMemo(() => bugLinkStats(issues), [issues]);
   const sortedRows = useMemo(() => sortPerformanceRows(filteredRows, sort.column, sort.direction), [filteredRows, sort]);
   const activeGroupKeys = useMemo(() => groupBy.filter((g): g is GroupKey => g !== ""), [groupBy]);
   const groups = useMemo(
@@ -309,18 +319,18 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
   // Project is chosen, People lists just the people who worked on that project.
   const people = useMemo(() => {
     const byName = new Map<string, PerformanceRole>();
-    for (const r of filterPerformanceRows(allRows, { ...draft.filters, names: [] })) byName.set(r.name, r.role);
+    for (const r of filterPerformanceRows(scopedRows, { ...draft.filters, names: [] })) byName.set(r.name, r.role);
     // Keep already-ticked people listed even if another filter now excludes them, so they can be unticked.
     for (const name of draft.filters.names) {
-      if (!byName.has(name)) byName.set(name, allRows.find((r) => r.name === name)?.role ?? "Unknown");
+      if (!byName.has(name)) byName.set(name, scopedRows.find((r) => r.name === name)?.role ?? "Unknown");
     }
     return Array.from(byName, ([name, role]) => ({ name, role })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [allRows, draft.filters]);
+  }, [scopedRows, draft.filters]);
   const facetOptions = useMemo(() => {
     const facet = FACETS.find((f) => f.field === facetField)!;
-    const scoped = filterPerformanceRows(allRows, { ...draft.filters, [facetField]: [] });
+    const scoped = filterPerformanceRows(scopedRows, { ...draft.filters, [facetField]: [] });
     return Array.from(new Set(scoped.map(facet.value))).sort((a, b) => a.localeCompare(b));
-  }, [allRows, facetField, draft.filters]);
+  }, [scopedRows, facetField, draft.filters]);
 
   async function load(forceRefresh: boolean) {
     setLoading(true);
@@ -524,10 +534,18 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
           <div>
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Developer &amp; QA Performance</h3>
             <p className="text-xs text-slate-400 dark:text-slate-500">
-              {filteredRows.length.toLocaleString()} of {allRows.length.toLocaleString()} rows · {formatHours(totals.actuals) || "0"}h actual
+              {filteredRows.length.toLocaleString()} of {scopedRows.length.toLocaleString()} rows · {formatHours(totals.actuals) || "0"}h actual
               {totals.estimation !== null ? ` vs ${formatHours(totals.estimation) || "0"}h estimated` : ""} · {totals.bugsReported} bugs ({totals.ctBugs} CT)
               {fetchedAt && ` · time data loaded ${formatDateTime(fetchedAt)}`}
             </p>
+            {linkStats.bugs > 0 && (
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                This project has {linkStats.bugs.toLocaleString()} bugs ({linkStats.ctBugs.toLocaleString()} CT).{" "}
+                {linkStats.unlinkedBugs > 0
+                  ? `${linkStats.unlinkedBugs.toLocaleString()} (${linkStats.unlinkedCtBugs.toLocaleString()} CT) are not under any task, so they can't be credited to anyone.`
+                  : "All of them sit under a task."}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -563,7 +581,7 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
             <label className={labelCls} htmlFor="perf-facet-field">Add filter</label>
             <div className="flex gap-1">
               <select id="perf-facet-field" className={inputCls} value={facetField} onChange={(e) => { setFacetField(e.target.value as FacetField); setFacetValue(""); }}>
-                {FACETS.filter((f) => f.field !== "names").map((f) => <option key={f.field} value={f.field}>{f.label}</option>)}
+                {FACETS.filter((f) => f.field !== "names" && f.field !== "trackers").map((f) => <option key={f.field} value={f.field}>{f.label}</option>)}
               </select>
               <select aria-label="Filter value" className={`${inputCls} max-w-[220px]`} value={facetValue} onChange={(e) => setFacetValue(e.target.value)}>
                 <option value="">Choose…</option>
@@ -712,7 +730,9 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
                   <td colSpan={visibleColumns.length} className="px-2 py-8 text-center text-slate-400 dark:text-slate-500">
                     {allRows.length === 0
                       ? "No Developer/QA activity found for this project."
-                      : "No rows match the current filters."}
+                      : scopedRows.length === 0
+                        ? "The Tracker chips at the top leave no rows. Only Epic, Feature, Story, Bug, CR and Suggestion tickets count as tasks here."
+                        : "No rows match the current filters."}
                   </td>
                 </tr>
               )}
@@ -758,8 +778,9 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
             <span className="font-medium">Actuals</span> are the hours that person logged on the task and its child tickets.
           </li>
           <li>
-            <span className="font-medium">Bugs reported</span>: for a Developer (or anyone not yet in the list), Bug tickets under a
-            ticket they are on; for QA, Bug tickets they filed under the task. <span className="font-medium">CT Bugs</span> are those with Testing Type = CT. Only bugs
+            <span className="font-medium">Bugs reported</span>: for a Developer (or anyone not yet in the list), Bug tickets raised
+            against a ticket they are on; for QA, Bug tickets they raised against a ticket they are working on (named on it or has
+            logged time on it). Bugs with status &ldquo;Not a bug&rdquo; are never counted. <span className="font-medium">CT Bugs</span> are those with Testing Type = CT. Only bugs
             linked by parent/child are counted.
           </li>
           <li>

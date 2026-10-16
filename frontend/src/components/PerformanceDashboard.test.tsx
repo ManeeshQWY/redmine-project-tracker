@@ -38,13 +38,18 @@ const ENTRIES = [
 // The master Developer/QA list the backend would serve from user_roles.json.
 const MASTER: UserRolesResult = { developers: ["Dev Dan", "Dev Dee"], qa: ["Quinn QA"], conflicts: [], error: null };
 
-async function renderLoaded(issues: Issue[] = ISSUES, entries: TimeEntry[] = ENTRIES, roles: UserRolesResult = MASTER) {
+async function renderLoaded(
+  issues: Issue[] = ISSUES,
+  entries: TimeEntry[] = ENTRIES,
+  roles: UserRolesResult = MASTER,
+  trackers: string[] = []
+) {
   vi.spyOn(api, "getTimeEntries").mockResolvedValue({
     timeEntries: entries, totalCount: entries.length, durationMs: 1, fetchedAt: "2026-03-20T00:00:00Z",
   });
   vi.spyOn(api, "getUserRoles").mockResolvedValue(roles);
   render(
-    <PerformanceDashboard projectIdentifier="alpha" projectLabel="Alpha" redmineBaseUrl="https://r.test" issues={issues} onSessionExpired={() => {}} />
+    <PerformanceDashboard projectIdentifier="alpha" projectLabel="Alpha" redmineBaseUrl="https://r.test" issues={issues} trackers={trackers} onSessionExpired={() => {}} />
   );
   fireEvent.click(screen.getByRole("button", { name: /load performance data/i }));
   await waitFor(() => expect(screen.getByRole("table")).toBeInTheDocument());
@@ -398,5 +403,59 @@ describe("PerformanceDashboard export", () => {
 
     await waitFor(() => expect(exporter).toHaveBeenCalledTimes(1));
     expect(exporter.mock.calls[0][0]).toHaveLength(total);
+  });
+});
+
+describe("PerformanceDashboard app-wide Tracker chips", () => {
+  const issues = [
+    makeIssue({ id: 1, tracker: "Story", assignedTo: "Dev Dan" }),
+    makeIssue({ id: 2, tracker: "Bug", assignedTo: "Dev Dee" }),
+    makeIssue({ id: 3, tracker: "Epic", assignedTo: "Dev Dan" }),
+  ];
+
+  it("shows rows only for the selected trackers, and the count reflects it", async () => {
+    await renderLoaded(issues, [], MASTER, ["Bug"]);
+    expect(bodyRows()).toHaveLength(1);
+    expect(dataTable().textContent).toContain("Dev Dee");
+    expect(dataTable().textContent).not.toContain("Dev Dan");
+    expect(screen.getByText(/1 of 1 rows/)).toBeInTheDocument();
+  });
+
+  it("shows every task tracker when no chip is selected", async () => {
+    await renderLoaded(issues, [], MASTER, []);
+    expect(bodyRows()).toHaveLength(3);
+  });
+
+  it("offers only people who have rows under the selected tracker", async () => {
+    await renderLoaded(issues, [], MASTER, ["Bug"]);
+    openPeople();
+    expect(screen.getByRole("checkbox", { name: /^Dev Dee/ })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /^Dev Dan/ })).not.toBeInTheDocument();
+  });
+
+  it("explains an empty result for a tracker that is not a task type", async () => {
+    await renderLoaded(issues, [], MASTER, ["Test Case"]);
+    expect(screen.getByText(/Tracker chips at the top leave no rows/i)).toBeInTheDocument();
+  });
+
+  it("does not offer Tracker a second time in Add filter", async () => {
+    await renderLoaded();
+    const options = within(screen.getByLabelText("Add filter")).getAllByRole("option").map((o) => o.textContent);
+    expect(options).not.toContain("Tracker");
+    expect(options).toContain("Project");
+  });
+});
+
+describe("PerformanceDashboard bug-link summary", () => {
+  it("states how many bugs (and CT bugs) cannot be credited because they are not under a task", async () => {
+    const ctField = [{ id: 9, name: "Testing Type", value: ["CT"] }];
+    const issues = [
+      makeIssue({ id: 1, tracker: "Story", assignedTo: "Dev Dan" }),
+      makeIssue({ id: 2, parentId: 1, tracker: "Bug", customFields: ctField }),
+      makeIssue({ id: 3, tracker: "Bug", customFields: ctField }), // orphan CT bug
+    ];
+    await renderLoaded(issues, [], MASTER);
+    const note = screen.getByText(/This project has 2 bugs \(2 CT\)/);
+    expect(note.textContent).toContain("1 (1 CT) are not under any task");
   });
 });
