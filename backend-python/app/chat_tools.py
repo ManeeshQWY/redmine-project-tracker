@@ -94,7 +94,7 @@ def _detail(issue: Issue) -> dict:
     }
 
 
-def build_tools(issues: list[Issue], api_key: str, project_identifier: str) -> tuple[list[Callable], dict]:
+def build_tools(issues: list[Issue], api_key: str, user_id: int, project_identifier: str) -> tuple[list[Callable], dict]:
     """Builds a fresh set of tool functions closing over this exact issue snapshot —
     called once per chat request, never shared or mutated across requests. Also returns
     a `filter_recorder` dict, auto-populated with search_tickets' filter args whenever a
@@ -104,7 +104,7 @@ def build_tools(issues: list[Issue], api_key: str, project_identifier: str) -> t
     shown inline" rather than relying on the model remembering to separately report
     what it searched for, so it can't drift out of sync with what was actually shown.
 
-    api_key/project_identifier are only needed for get_time_entries_for_ticket, which —
+    api_key/user_id/project_identifier are only needed for get_time_entries_for_ticket, which —
     unlike every other tool here — isn't a pure computation over the already-loaded
     `issues` list: time entries are a separate, potentially large Redmine dataset
     (deliberately not preloaded, same as the Time Spent by User tab), so that one tool
@@ -134,7 +134,7 @@ def build_tools(issues: list[Issue], api_key: str, project_identifier: str) -> t
         if ticket_id not in by_id:
             return {"found": False, "entries": []}
         descendant_ids = _collect_descendant_ids(ticket_id, issues)
-        result = await load_time_entries(api_key, project_identifier, False)
+        result = await load_time_entries(api_key, user_id, project_identifier, False)
         matching = [e for e in result.timeEntries if e.issueId in descendant_ids]
         return {
             "found": True,

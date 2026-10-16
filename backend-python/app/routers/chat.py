@@ -29,8 +29,8 @@ async def chat_route(project_identifier: str, body: ChatRequest, session: Sessio
     # Reuses the same cache the dashboard itself reads from — no extra Redmine call for
     # a project you're already viewing. Scoped to the whole project's tickets, not
     # whatever tracker/etc. filters happen to be active in the UI right now.
-    result = await load_project_issues(session.api_key, project_identifier, False)
-    tools, filter_recorder = build_tools(result.issues, session.api_key, project_identifier)
+    result = await load_project_issues(session.api_key, session.user.id, project_identifier, False)
+    tools, filter_recorder = build_tools(result.issues, session.api_key, session.user.id, project_identifier)
     project_label = "All Projects" if project_identifier == ALL_PROJECTS else project_identifier
 
     try:

@@ -12,5 +12,5 @@ router = APIRouter(prefix="/api/projects")
 # entry volume can be very large (tens of thousands across the whole instance).
 @router.get("/{project_identifier}/time-entries")
 async def get_time_entries_route(project_identifier: str, refresh: str = "false", session: Session = Depends(require_session)):
-    result = await load_time_entries(session.api_key, project_identifier, refresh == "true")
+    result = await load_time_entries(session.api_key, session.user.id, project_identifier, refresh == "true")
     return result

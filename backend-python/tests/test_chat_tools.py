@@ -44,7 +44,7 @@ def make_issue(**overrides) -> Issue:
 
 
 def tools_by_name(issues):
-    tools, _recorder = build_tools(issues, "fake-key", "fake-project")
+    tools, _recorder = build_tools(issues, "fake-key", 1, "fake-project")
     return {fn.__name__: fn for fn in tools}
 
 
@@ -162,19 +162,19 @@ class TestFilterRecorder:
     to remember to call, and not for a call that already shows everything."""
 
     def test_recorder_is_empty_until_a_truncating_call_happens(self):
-        tools, recorder = build_tools([make_issue(id=1)], "fake-key", "fake-project")
+        tools, recorder = build_tools([make_issue(id=1)], "fake-key", 1, "fake-project")
         assert recorder == {}
 
     def test_a_fully_shown_result_does_not_populate_the_recorder(self):
         issues = [make_issue(id=i, assignedTo="Alice") for i in range(1, 4)]  # well under MAX_RESULTS
-        tools, recorder = build_tools(issues, "fake-key", "fake-project")
+        tools, recorder = build_tools(issues, "fake-key", 1, "fake-project")
         search = {fn.__name__: fn for fn in tools}["search_tickets"]
         search(assigned_to="Alice")
         assert recorder == {}
 
     def test_a_truncating_call_records_its_own_filter_args(self):
         issues = [make_issue(id=i, assignedTo="Alice") for i in range(1, 25)]  # exceeds MAX_RESULTS
-        tools, recorder = build_tools(issues, "fake-key", "fake-project")
+        tools, recorder = build_tools(issues, "fake-key", 1, "fake-project")
         search = {fn.__name__: fn for fn in tools}["search_tickets"]
         search(assigned_to="Alice", tracker="Bug")
         assert recorder == {"assignee": "Alice", "tracker": "Bug", "status": None, "priority": None, "search": None}
@@ -185,7 +185,7 @@ class TestFilterRecorder:
         issues = [make_issue(id=i, assignedTo="Alice") for i in range(1, 21)] + [
             make_issue(id=i, assignedTo="Bob") for i in range(21, 41)
         ]
-        tools, recorder = build_tools(issues, "fake-key", "fake-project")
+        tools, recorder = build_tools(issues, "fake-key", 1, "fake-project")
         search = {fn.__name__: fn for fn in tools}["search_tickets"]
         search(assigned_to="Alice")
         search(assigned_to="Bob")
@@ -194,7 +194,7 @@ class TestFilterRecorder:
 
 class TestGetTimeEntriesForTicket:
     def _tool(self, issues, project_identifier):
-        tools, _recorder = build_tools(issues, "test-key", project_identifier)
+        tools, _recorder = build_tools(issues, "test-key", 1, project_identifier)
         return {fn.__name__: fn for fn in tools}["get_time_entries_for_ticket"]
 
     @pytest.mark.asyncio

@@ -19,7 +19,7 @@ async def get_issue_count_route(project_identifier: str, session: Session = Depe
 
 @router.get("/{project_identifier}/issues")
 async def get_issues_route(project_identifier: str, refresh: str = "false", session: Session = Depends(require_session)):
-    result = await load_project_issues(session.api_key, project_identifier, refresh == "true")
+    result = await load_project_issues(session.api_key, session.user.id, project_identifier, refresh == "true")
     return result
 
 
@@ -27,5 +27,5 @@ async def get_issues_route(project_identifier: str, refresh: str = "false", sess
 # Release Dashboard calls this only when that tab is opened.
 @router.get("/{project_identifier}/versions")
 async def get_versions_route(project_identifier: str, session: Session = Depends(require_session)):
-    versions = await load_versions(session.api_key, project_identifier)
+    versions = await load_versions(session.api_key, session.user.id, project_identifier)
     return {"versions": versions}
