@@ -119,11 +119,13 @@ It listens on `http://localhost:5173` and proxies `/api/*` to the backend (see
 2. Select a project from the dropdown (e.g. "INDIA - ERP Platform").
 3. Wait for the initial load — for a ~2,300-ticket project this takes roughly
    15-20 seconds the first time (paginated fetch from Redmine); subsequent
-   loads for the same project are served from an in-memory cache (shared across
-   teammates viewing that project) until you hit **Refresh Data**, the 15-minute
-   cache expires, or the backend restarts.
+   loads for the same project are served from an in-memory cache (your own copy —
+   caches are per user) until you hit **Refresh Data**, the 15-minute cache
+   expires, or the backend restarts.
 4. Explore the tabs: Overview (KPIs + breakdown charts), Ticket Table (search/filter/sort,
-   clickable ticket links), Aging & Resolution, Release Dashboard, QA Dashboard, and more.
+   clickable ticket links), Aging & Resolution, Release Dashboard, QA Dashboard,
+   Time Spent by User, Dev & QA Performance (per-person estimation/actuals/bugs per task with
+   filters, grouping and its own Excel export), and more.
 5. Click **Export to Excel** to download a 4-sheet workbook (Master Tickets, Summary, Time
    Analysis, Aging) reflecting the currently selected project and filters.
 6. **Log out** clears your session cookie server-side immediately.
@@ -203,15 +205,30 @@ Captured by live inspection of `support.qwysoft.com` before writing any code (se
 - Any Redmine account that can authenticate (`/users/current.json`) is accepted — the app
   doesn't restrict logins to a particular group/role; it relies on each user's own Redmine
   permissions to determine what projects/issues they can see.
-- **Issue/time-entry/meta caches are shared across all logged-in users, keyed only by
-  project** (not per-user) — this assumes everyone on the instance has the same
-  project/issue visibility, which is true for a small internal team without per-project
-  role restrictions. Whichever user's request first populates a project's cache determines
-  what every other user sees from it until it expires (15 min for tickets/time entries, 1h
-  for statuses/trackers/priorities/projects) — Redmine access isn't re-checked on a cache
-  hit. This trades a small amount of access-control precision for a roughly N-fold
-  reduction in memory use with N concurrent users viewing the same project, which matters
-  on a memory-constrained free-tier host.
+- **Issues, time entries, target versions and the project list are cached per user**
+  (keyed by user id + project), because Redmine returns only what the calling API key may
+  see and that differs between people. Only statuses/trackers/priorities, which are
+  identical for everyone, are shared. Cache memory therefore grows with the number of
+  distinct users viewing a project — worth watching on a memory-constrained free-tier
+  host. TTLs: 15 min for tickets/time entries, 1h for the rest.
+
+## Developer / QA master list
+
+The Dev & QA Performance tab takes a person's role **only** from
+`backend-python/user_roles.json` — Redmine does not store it, and the Assignee, Additional
+Assignee and Assigned QA fields say who is *on* a ticket, not what they *are*:
+
+```json
+{
+  "Developer": ["Dev Dan", "Dev Dee"],
+  "QA": ["Quinn QA"]
+}
+```
+
+Use each person's exact Redmine display name (case is ignored). Edit, commit and redeploy to
+change it. Anyone not listed shows as **Unknown** (the tab lists them so they can be added);
+a name under both roles is flagged as a conflict and also treated as Unknown. No database is
+involved.
 
 ## Known limitations
 

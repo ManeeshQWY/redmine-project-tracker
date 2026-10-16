@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { exportToExcel } from "./excelExport";
+import { exportPerformanceToExcel, exportToExcel } from "./excelExport";
+import { PerformanceRow } from "./performance";
 import { Issue } from "../types/issue";
 
 function makeIssue(overrides: Partial<Issue> = {}): Issue {
@@ -9,14 +10,18 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
     author: "A", subject: "S", description: null, doneRatio: 0, createdOn: "2026-01-01T00:00:00Z", updatedOn: "2026-01-01T00:00:00Z",
     assignedTo: null, targetVersion: null, targetVersionId: null, startDate: null, dueDate: null, closedOn: null,
     estimatedHours: null, spentHours: null, totalSpentHours: null, totalEstimatedHours: null, assignedQA: null, platform: null,
-    additionalAssignee: null, additionalAssignees: [], estimatedTimeForQA: null, customFields: [],
+    additionalAssignee: null, additionalAssignees: [], assignedQAs: [], estimatedTimeForQA: null, customFields: [],
     ...overrides,
   };
 }
 
-// exportToExcel downloads via a Blob + <a download> click; capture the Blob and read the
+// The exporters download via a Blob + <a download> click; capture the Blob and read the
 // workbook back so the test asserts on what's actually in the file.
 async function runExport(...args: Parameters<typeof exportToExcel>): Promise<ExcelJS.Workbook> {
+  return capture(() => exportToExcel(...args));
+}
+
+async function capture(run: () => Promise<void>): Promise<ExcelJS.Workbook> {
   let captured: Blob | undefined;
   (URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL = (b) => {
     captured = b;
@@ -25,7 +30,7 @@ async function runExport(...args: Parameters<typeof exportToExcel>): Promise<Exc
   (URL as unknown as { revokeObjectURL: () => void }).revokeObjectURL = () => {};
   vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 
-  await exportToExcel(...args);
+  await run();
 
   const buffer = await new Promise<ArrayBuffer>((resolve, reject) => {
     const reader = new FileReader();
@@ -70,5 +75,38 @@ describe("exportToExcel release dates", () => {
     const master = wb.getWorksheet("Master Tickets")!;
     const col = (master.getRow(1).values as unknown[]).indexOf("Release Date");
     expect(master.getRow(2).getCell(col).value ?? "").toBe("");
+  });
+});
+
+describe("exportPerformanceToExcel", () => {
+  const row: PerformanceRow = {
+    key: "42|Dev Dan", name: "Dev Dan", role: "Developer", project: "Alpha", taskId: 42, ancestorIds: [],
+    taskSubject: "Login page", tracker: "Story", status: "New", statusIsClosed: false, targetVersion: null,
+    complexity: null, estimation: 8, actuals: 6.5, aiUsage: null, bugsReported: 3, ctBugs: 1,
+  };
+
+  it("writes exactly the agreed columns, in order, with the header on row 1", async () => {
+    const wb = await capture(() => exportPerformanceToExcel([row], "Alpha"));
+    const sheet = wb.getWorksheet("Performance")!;
+    const header = (sheet.getRow(1).values as unknown[]).slice(1);
+    expect(header).toEqual([
+      "Name", "Project", "Task", "Complexity", "Estimation", "Actuals", "AI usage", "Bugs reported", "CT Bugs", "Comments",
+    ]);
+    expect(wb.worksheets).toHaveLength(1);
+  });
+
+  it("fills the data columns and leaves Complexity, AI usage and Comments blank", async () => {
+    const wb = await capture(() => exportPerformanceToExcel([row], "Alpha"));
+    const r = wb.getWorksheet("Performance")!.getRow(2);
+    expect(r.getCell(1).value).toBe("Dev Dan");
+    expect(r.getCell(2).value).toBe("Alpha");
+    expect(r.getCell(3).value).toBe("#42 Login page");
+    expect(r.getCell(4).value ?? "").toBe("");
+    expect(r.getCell(5).value).toBe(8);
+    expect(r.getCell(6).value).toBe(6.5);
+    expect(r.getCell(7).value ?? "").toBe("");
+    expect(r.getCell(8).value).toBe(3);
+    expect(r.getCell(9).value).toBe(1);
+    expect(r.getCell(10).value ?? "").toBe("");
   });
 });

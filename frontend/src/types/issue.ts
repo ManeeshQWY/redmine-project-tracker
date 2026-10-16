@@ -40,6 +40,7 @@ export interface Issue {
   platform: string | null;
   additionalAssignee: string | null;
   additionalAssignees: AssigneeRef[];
+  assignedQAs: AssigneeRef[]; // structured form of assignedQA (may hold several people)
   estimatedTimeForQA: string | null;
   customFields: CustomFieldValue[];
 }
@@ -106,4 +107,12 @@ export interface TimeEntriesResult {
   totalCount: number;
   durationMs: number;
   fetchedAt: string;
+}
+
+/** The master Developer / QA list (backend user_roles.json). */
+export interface UserRolesResult {
+  developers: string[];
+  qa: string[];
+  conflicts: string[]; // listed under both roles — treated as Unknown
+  error: string | null; // set when the file is missing or malformed
 }

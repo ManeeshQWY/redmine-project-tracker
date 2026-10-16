@@ -121,6 +121,7 @@ def transform_issue(raw: dict[str, Any], user_map: dict[int, str]) -> Issue:
         additionalAssignees=_resolve_custom_field_user_refs(additional_assignee_field["value"], user_map)
         if additional_assignee_field
         else [],
+        assignedQAs=_resolve_custom_field_user_refs(assigned_qa_field["value"], user_map) if assigned_qa_field else [],
         estimatedTimeForQA=_resolve_custom_field_display(estimated_qa_field["value"], user_map)
         if estimated_qa_field
         else None,

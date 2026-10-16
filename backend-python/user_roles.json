@@ -1,0 +1,5 @@
+{
+  "_comment": "Master list of who is a Developer and who is QA, used by the Dev & QA Performance report. Use each person's exact Redmine display name. A name listed under both roles is flagged as a conflict and treated as Unknown. Edit, commit and redeploy to change.",
+  "Developer": [],
+  "QA": []
+}

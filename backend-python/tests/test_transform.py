@@ -120,6 +120,18 @@ class TestCustomFieldResolution:
         assert issue.additionalAssignees == []
 
 
+class TestAssignedQAs:
+    def test_structured_list_resolves_every_qa_with_id_and_name(self):
+        raw = base_raw(custom_fields=[{"id": 4, "name": "Assigned QA", "value": ["42", "99"], "multiple": True}])
+        issue = transform_issue(raw, {42: "Jane QA", 99: "Amal Prasad"})
+        assert [(r.id, r.name) for r in issue.assignedQAs] == [(42, "Jane QA"), (99, "Amal Prasad")]
+        # the comma-joined display string stays intact alongside it
+        assert issue.assignedQA == "Jane QA, Amal Prasad"
+
+    def test_empty_when_field_absent(self):
+        assert transform_issue(base_raw(custom_fields=[]), {}).assignedQAs == []
+
+
 class TestStatusIsClosed:
     def test_uses_status_is_closed_flag_not_fixed_status_id(self):
         closed_by_nonstandard_id = base_raw(status={"id": 10, "name": "Not a Defect", "is_closed": True})

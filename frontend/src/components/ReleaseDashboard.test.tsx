@@ -10,7 +10,7 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
     author: "A", subject: "S", description: null, doneRatio: 0, createdOn: "2026-01-01T00:00:00Z", updatedOn: "2026-01-01T00:00:00Z",
     assignedTo: null, targetVersion: null, targetVersionId: null, startDate: null, dueDate: null, closedOn: null,
     estimatedHours: null, spentHours: null, totalSpentHours: null, totalEstimatedHours: null, assignedQA: null, platform: null,
-    additionalAssignee: null, additionalAssignees: [], estimatedTimeForQA: null, customFields: [],
+    additionalAssignee: null, additionalAssignees: [], assignedQAs: [], estimatedTimeForQA: null, customFields: [],
     ...overrides,
   };
 }

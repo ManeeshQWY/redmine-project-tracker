@@ -48,6 +48,7 @@ class Issue(BaseModel):
     # unchanged alongside this for backward compatibility with existing consumers
     # (TicketTable column, Excel export).
     additionalAssignees: list[AssigneeRef] = []
+    assignedQAs: list[AssigneeRef] = []  # structured form of assignedQA (which may hold several people)
     estimatedTimeForQA: str | None = None
     customFields: list[CustomFieldValue] = []
 
@@ -119,3 +120,13 @@ class CurrentUser(BaseModel):
     name: str
     login: str
     mail: str | None = None
+
+
+class UserRolesResult(BaseModel):
+    """Who is a Developer / QA, from user_roles.json. `error` is set when the file is
+    missing or malformed; `conflicts` are names listed under both roles."""
+
+    developers: list[str] = []
+    qa: list[str] = []
+    conflicts: list[str] = []
+    error: str | None = None

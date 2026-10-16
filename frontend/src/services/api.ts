@@ -1,4 +1,4 @@
-import { MetaResult, ProjectIssuesResult, ProjectMeta, TimeEntriesResult, VersionMeta } from "../types/issue";
+import { MetaResult, ProjectIssuesResult, ProjectMeta, TimeEntriesResult, UserRolesResult, VersionMeta } from "../types/issue";
 import { TicketFilters } from "../utils/filters";
 
 // All Redmine access goes through our own backend at /api/* (proxied to
@@ -93,6 +93,12 @@ export function getIssueCount(projectIdentifier: string): Promise<number> {
  * when the Release Dashboard is opened) so it never slows the main ticket load. */
 export function getVersions(projectIdentifier: string): Promise<VersionMeta[]> {
   return getJson<{ versions: VersionMeta[] }>(`/api/projects/${encodeURIComponent(projectIdentifier)}/versions`).then((r) => r.versions);
+}
+
+/** The master list of who is a Developer / QA — the only source of role for the Dev & QA
+ * Performance report. */
+export function getUserRoles(): Promise<UserRolesResult> {
+  return getJson<UserRolesResult>("/api/user-roles");
 }
 
 export interface ChatTurn {

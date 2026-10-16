@@ -21,6 +21,7 @@ import EstimateVsActualPanel from "./components/EstimateVsActualPanel";
 import ReleaseDashboard from "./components/ReleaseDashboard";
 import QADashboard from "./components/QADashboard";
 import TimeSpentByUserPanel from "./components/TimeSpentByUserPanel";
+import PerformanceDashboard from "./components/PerformanceDashboard";
 import LoadingIndicator from "./components/LoadingIndicator";
 import ClosedTicketsTrendPanel from "./components/ClosedTicketsTrendPanel";
 import UserAssignmentPanel from "./components/UserAssignmentPanel";
@@ -28,7 +29,7 @@ import ChipMultiSelect from "./components/ChipMultiSelect";
 import ChatPanel from "./components/ChatPanel";
 import { LogoMark, TabIcon } from "./components/icons";
 
-type Tab = "overview" | "tickets" | "aging" | "release" | "qa" | "time" | "closedTrend" | "myAssigned";
+type Tab = "overview" | "tickets" | "aging" | "release" | "qa" | "time" | "performance" | "closedTrend" | "myAssigned";
 
 const TABS: { id: Tab; label: string; description: string }[] = [
   { id: "overview", label: "Overview", description: "Key metrics and breakdowns across the current selection." },
@@ -37,6 +38,7 @@ const TABS: { id: Tab; label: string; description: string }[] = [
   { id: "release", label: "Release Dashboard", description: "Tickets grouped by target version." },
   { id: "qa", label: "QA Dashboard", description: "QA-focused tracker and status breakdowns." },
   { id: "time", label: "Time Spent by User", description: "Logged hours per person for this project." },
+  { id: "performance", label: "Dev & QA Performance", description: "Estimation, actual hours and bugs per developer and QA, per task." },
   { id: "closedTrend", label: "Closed Tickets Trend", description: "Closed volume by month and tracker." },
   { id: "myAssigned", label: "Open Tickets per User", description: "Open tickets assigned to a specific person." },
 ];
@@ -301,6 +303,7 @@ export default function App() {
                   onRefresh={() => loadIssues(selectedProject, true)}
                   onExport={() => meta && exportWithReleaseDates(meta.redmineBaseUrl, selectedProject, selectedProjectLabel)}
                   exportDisabled={loading || filteredIssues.length === 0}
+                  showExport={tab !== "performance"}
                 />
               </div>
 
@@ -368,6 +371,16 @@ export default function App() {
                   <TimeSpentByUserPanel
                     projectIdentifier={selectedProject}
                     projectLabel={selectedProjectLabel}
+                    issues={issues}
+                    onSessionExpired={() => setUser(null)}
+                  />
+                )}
+
+                {tab === "performance" && (
+                  <PerformanceDashboard
+                    projectIdentifier={selectedProject}
+                    projectLabel={selectedProjectLabel}
+                    redmineBaseUrl={meta?.redmineBaseUrl ?? ""}
                     issues={issues}
                     onSessionExpired={() => setUser(null)}
                   />

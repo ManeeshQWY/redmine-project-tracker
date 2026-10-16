@@ -8,9 +8,12 @@ interface Props {
   onRefresh: () => void;
   onExport: () => void;
   exportDisabled: boolean;
+  // The Dev & QA Performance tab has its own filter-aware export, so the app-wide one
+  // (every ticket, fixed 4-sheet layout) is hidden there rather than sit beside it looking identical.
+  showExport?: boolean;
 }
 
-export default function RefreshBar({ lastRefreshed, lastFetchDurationMs, loading, onRefresh, onExport, exportDisabled }: Props) {
+export default function RefreshBar({ lastRefreshed, lastFetchDurationMs, loading, onRefresh, onExport, exportDisabled, showExport = true }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       {lastRefreshed && (
@@ -19,14 +22,16 @@ export default function RefreshBar({ lastRefreshed, lastFetchDurationMs, loading
           {lastFetchDurationMs !== null && ` · ${(lastFetchDurationMs / 1000).toFixed(1)}s`}
         </span>
       )}
-      <button
-        onClick={onExport}
-        disabled={exportDisabled}
-        className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-      >
-        <DownloadIcon className="h-3.5 w-3.5" />
-        Export to Excel
-      </button>
+      {showExport && (
+        <button
+          onClick={onExport}
+          disabled={exportDisabled}
+          className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          <DownloadIcon className="h-3.5 w-3.5" />
+          Export to Excel
+        </button>
+      )}
       <button
         onClick={onRefresh}
         disabled={loading}

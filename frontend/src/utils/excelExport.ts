@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { Issue, TimeEntry, VersionMeta } from "../types/issue";
+import { PerformanceRow } from "./performance";
 import {
   aggregateByPriority,
   aggregateByRelease,
@@ -248,4 +249,47 @@ export async function exportTimeSpentToExcel(
   addNoTicketTimeSheet(workbook, noTicketEntries);
 
   await downloadWorkbook(workbook, "redmine_time_spent", projectName);
+}
+
+/** Developer/QA performance report. Deliberately NOT in the layout the other exports use:
+ * exactly the agreed field list, header on row 1, no scope/title rows — the Comments
+ * column is left blank for the reviewer to fill in by hand after download, and
+ * Complexity / AI usage are blank until Redmine records them. */
+export async function exportPerformanceToExcel(rows: PerformanceRow[], projectName: string) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Redmine Project Tracker";
+  workbook.created = new Date();
+
+  const sheet = workbook.addWorksheet("Performance");
+  sheet.columns = [
+    { header: "Name", key: "name", width: 24 },
+    { header: "Project", key: "project", width: 24 },
+    { header: "Task", key: "task", width: 56 },
+    { header: "Complexity", key: "complexity", width: 12 },
+    { header: "Estimation", key: "estimation", width: 12 },
+    { header: "Actuals", key: "actuals", width: 12 },
+    { header: "AI usage", key: "aiUsage", width: 12 },
+    { header: "Bugs reported", key: "bugsReported", width: 14 },
+    { header: "CT Bugs", key: "ctBugs", width: 10 },
+    { header: "Comments", key: "comments", width: 40 },
+  ];
+  for (const r of rows) {
+    sheet.addRow({
+      name: r.name,
+      project: r.project,
+      task: `#${r.taskId} ${r.taskSubject}`,
+      complexity: "",
+      estimation: r.estimation ?? "",
+      actuals: r.actuals,
+      aiUsage: "",
+      bugsReported: r.bugsReported,
+      ctBugs: r.ctBugs,
+      comments: "",
+    });
+  }
+  styleHeaderRow(sheet);
+  sheet.views = [{ state: "frozen", ySplit: 1 }];
+  sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: sheet.columns.length } };
+
+  await downloadWorkbook(workbook, "redmine_performance", projectName);
 }

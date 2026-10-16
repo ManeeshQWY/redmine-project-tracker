@@ -41,6 +41,7 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
     platform: null,
     additionalAssignee: null,
     additionalAssignees: [],
+    assignedQAs: [],
     estimatedTimeForQA: null,
     customFields: [],
     ...overrides,
