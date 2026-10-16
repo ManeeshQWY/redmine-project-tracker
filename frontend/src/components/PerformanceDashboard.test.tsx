@@ -446,8 +446,26 @@ describe("PerformanceDashboard app-wide Tracker chips", () => {
   });
 });
 
+describe("PerformanceDashboard bugs assigned to a developer", () => {
+  it("counts a CT bug assigned straight to a developer, even though it has no parent", async () => {
+    const ct = [{ id: 9, name: "Testing Type", value: ["CT"] }];
+    const issues = [
+      makeIssue({ id: 26367, tracker: "Bug", status: "Closed", statusIsClosed: true, assignedTo: "Saurav Sajeev", customFields: ct }),
+    ];
+    await renderLoaded(issues, [entry26367()], { developers: [], qa: [], conflicts: [], error: null });
+    const row = bodyRows().find((r) => r.textContent?.includes("Saurav Sajeev"))!;
+    const cells = within(row).getAllByRole("cell").map((c) => c.textContent);
+    expect(cells[8]).toBe("1"); // Bugs reported
+    expect(cells[9]).toBe("1"); // CT Bugs
+  });
+});
+
+function entry26367(): TimeEntry {
+  return makeEntry({ id: 77, issueId: 26367, user: "Saurav Sajeev", hours: 3 });
+}
+
 describe("PerformanceDashboard bug-link summary", () => {
-  it("states how many bugs (and CT bugs) cannot be credited because they are not under a task", async () => {
+  it("states how many bugs (and CT bugs) have no parent task", async () => {
     const ctField = [{ id: 9, name: "Testing Type", value: ["CT"] }];
     const issues = [
       makeIssue({ id: 1, tracker: "Story", assignedTo: "Dev Dan" }),
@@ -456,6 +474,6 @@ describe("PerformanceDashboard bug-link summary", () => {
     ];
     await renderLoaded(issues, [], MASTER);
     const note = screen.getByText(/This project has 2 bugs \(2 CT\)/);
-    expect(note.textContent).toContain("1 (1 CT) are not under any task");
+    expect(note.textContent).toContain("1 (1 CT) have no parent task");
   });
 });

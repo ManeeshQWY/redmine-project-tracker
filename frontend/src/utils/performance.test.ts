@@ -253,6 +253,62 @@ describe("buildPerformanceRows — figures", () => {
     expect(rowFor(build(issues), 1, "Quinn QA")!.bugsReported).toBe(0);
   });
 
+  it("counts a bug assigned to a developer even when it has no parent (the usual case)", () => {
+    const ct = [{ id: 9, name: "Testing Type", value: ["CT"] }];
+    const issues = [issue({ id: 26367, tracker: "Bug", assignedTo: "Dev Dan", customFields: ct })];
+    const row = rowFor(build(issues), 26367, "Dev Dan")!;
+    expect(row.bugsReported).toBe(1);
+    expect(row.ctBugs).toBe(1);
+  });
+
+  it("counts a bug assigned to a developer under a task they are not otherwise on", () => {
+    const issues = [
+      issue({ id: 1, tracker: "Epic", assignedTo: "Dev Dee" }),
+      issue({ id: 2, parentId: 1, tracker: "Bug", assignedTo: "Dev Dan" }),
+    ];
+    const rows = build(issues);
+    expect(rowFor(rows, 1, "Dev Dan")!.bugsReported).toBe(1); // on the Epic's consolidated row
+    expect(rowFor(rows, 2, "Dev Dan")!.bugsReported).toBe(1); // and on the bug's own row
+    expect(rowFor(rows, 1, "Dev Dee")!.bugsReported).toBe(1); // reported against Dee's Epic
+  });
+
+  it("counts an additional assignee's bug too", () => {
+    const issues = [issue({ id: 5, tracker: "Bug", assignedTo: "Dev Dan", additionalAssignees: [{ id: 7, name: "Dev Dee" }] })];
+    const rows = build(issues);
+    expect(rowFor(rows, 5, "Dev Dan")!.bugsReported).toBe(1);
+    expect(rowFor(rows, 5, "Dev Dee")!.bugsReported).toBe(1);
+  });
+
+  it("does not credit a QA with a bug just because it is assigned to them", () => {
+    const issues = [issue({ id: 5, tracker: "Bug", assignedTo: "Quinn QA" })];
+    expect(rowFor(build(issues), 5, "Quinn QA")!.bugsReported).toBe(0);
+  });
+
+  it("does not count an assigned bug whose status is Not a bug", () => {
+    const issues = [issue({ id: 5, tracker: "Bug", status: "Not a bug", assignedTo: "Dev Dan" })];
+    expect(rowFor(build(issues), 5, "Dev Dan")!.bugsReported).toBe(0);
+  });
+
+  it("totals count an assigned bug once even though it appears on its own row and its parent's", () => {
+    const issues = [
+      issue({ id: 1, tracker: "Epic", assignedTo: "Dev Dan" }),
+      issue({ id: 2, parentId: 1, tracker: "Bug", assignedTo: "Dev Dan" }),
+    ];
+    const danRows = build(issues).filter((r) => r.name === "Dev Dan");
+    expect(danRows).toHaveLength(2);
+    expect(totalsOf(danRows).bugsReported).toBe(1);
+  });
+
+  it("respects the activity window for assigned bugs", () => {
+    const issues = [
+      issue({ id: 5, tracker: "Bug", assignedTo: "Dev Dan", createdOn: "2026-02-01T00:00:00Z" }),
+      issue({ id: 6, tracker: "Bug", assignedTo: "Dev Dan", createdOn: "2026-03-20T00:00:00Z" }),
+    ];
+    const rows = build(issues, [], { from: "2026-03-01", to: "2026-03-31" });
+    expect(rowFor(rows, 5, "Dev Dan")).toBeUndefined();
+    expect(rowFor(rows, 6, "Dev Dan")!.bugsReported).toBe(1);
+  });
+
   it("ignores bugs with status Not a bug — for the developer, the QA and the CT count", () => {
     const ct = [{ id: 9, name: "Testing Type", value: ["CT"] }];
     const issues = [

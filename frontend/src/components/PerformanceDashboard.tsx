@@ -542,7 +542,7 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
               <p className="text-[11px] text-slate-400 dark:text-slate-500">
                 This project has {linkStats.bugs.toLocaleString()} bugs ({linkStats.ctBugs.toLocaleString()} CT).{" "}
                 {linkStats.unlinkedBugs > 0
-                  ? `${linkStats.unlinkedBugs.toLocaleString()} (${linkStats.unlinkedCtBugs.toLocaleString()} CT) are not under any task, so they can't be credited to anyone.`
+                  ? `${linkStats.unlinkedBugs.toLocaleString()} (${linkStats.unlinkedCtBugs.toLocaleString()} CT) have no parent task, so they count only for the person they're assigned to.`
                   : "All of them sit under a task."}
               </p>
             )}
@@ -778,9 +778,9 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
             <span className="font-medium">Actuals</span> are the hours that person logged on the task and its child tickets.
           </li>
           <li>
-            <span className="font-medium">Bugs reported</span>: for a Developer (or anyone not yet in the list), Bug tickets raised
-            against a ticket they are on; for QA, Bug tickets they raised against a ticket they are working on (named on it or has
-            logged time on it). Bugs with status &ldquo;Not a bug&rdquo; are never counted. <span className="font-medium">CT Bugs</span> are those with Testing Type = CT. Only bugs
+            <span className="font-medium">Bugs reported</span>: for a Developer (or anyone not yet in the list), Bug tickets assigned to
+            them plus Bug tickets raised against a ticket they are on; for QA, Bug tickets they raised against a ticket they are
+            working on (named on it or has logged time on it). Bugs with status &ldquo;Not a bug&rdquo; are never counted. <span className="font-medium">CT Bugs</span> are those with Testing Type = CT. Only bugs
             linked by parent/child are counted.
           </li>
           <li>

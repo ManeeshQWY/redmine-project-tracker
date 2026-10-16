@@ -149,9 +149,10 @@ function workersOf(issue: Issue): string[] {
  *   it says are QA share "Estimated time for QA". If no listed Developer is on the ticket,
  *   its Assignee / Additional Assignees not yet in the list share the estimate instead.
  * - Actuals: that person's logged hours across the subtree, whether or not attached.
- * - Bugs reported: Developer (and anyone not in the list) — Bug tickets that sit under a
- *   ticket they are attached to; QA — Bug tickets they filed (author) under a ticket they
- *   are working on. Bugs with status "Not a bug" never count. CT Bugs is the subset marked
+ * - Bugs reported: Developer (and anyone not in the list) — Bug tickets assigned to them,
+ *   plus Bug tickets that sit under a ticket they are attached to; QA — Bug tickets they
+ *   filed (author) under a ticket they are working on. Bugs with status "Not a bug" never
+ *   count. CT Bugs is the subset marked
  *   Testing Type = CT.
  *
  * `range` limits time entries by spent-on date and bugs by created-on date; when active,
@@ -266,6 +267,16 @@ export function buildPerformanceRows(
       if (logged) {
         for (const [name, hours] of logged) slot(name).hours += hours;
       }
+
+      // A bug assigned to someone counts against them wherever it sits — most bugs have no
+      // parent at all, so linking by parent alone would miss them. (This also covers the
+      // task itself when it is a Bug.) QA are credited for bugs they raise, not bugs
+      // they are assigned.
+      if (isCountedBug(k) && inRange(k.createdOn, range)) {
+        for (const name of workersOf(k)) {
+          if (roleOf(name) !== "QA") slot(name).bugIds.add(k.id);
+        }
+      }
     }
 
     // Bugs: walk down from the task carrying everyone attached to an ancestor, so a bug
@@ -329,14 +340,13 @@ export function buildPerformanceRows(
 export interface BugLinkStats {
   bugs: number;
   ctBugs: number;
-  unlinkedBugs: number; // not under any task row, so no one can be credited with them
+  unlinkedBugs: number; // no task above them: credited only to their own assignee
   unlinkedCtBugs: number;
 }
 
-/** How many of the project's bugs can actually be attributed. A bug only counts for
- * someone when one of its ancestors is a task row, so bugs with no parent (or only under
- * non-task tickets such as Test Case) are invisible to the report — this makes that gap
- * visible instead of leaving "0 CT" unexplained. */
+/** How many of the project's bugs have no task above them. Those still count for the person
+ * they are assigned to, but cannot be tied to a ticket's developer or to the QA who raised
+ * them — shown so that gap is visible rather than leaving a count unexplained. */
 export function bugLinkStats(issues: Issue[]): BugLinkStats {
   const byId = new Map(issues.map((i) => [i.id, i]));
   const stats: BugLinkStats = { bugs: 0, ctBugs: 0, unlinkedBugs: 0, unlinkedCtBugs: 0 };
