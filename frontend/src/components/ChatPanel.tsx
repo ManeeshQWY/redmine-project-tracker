@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { ApiError, ChatTurn, sendChatMessage } from "../services/api";
+import { DEFAULT_WINDOW, LoadWindow } from "../utils/dataWindow";
 import { TicketFilters } from "../utils/filters";
 import { ChatIcon, CloseIcon, SendIcon } from "./icons";
 
@@ -31,6 +32,7 @@ function MessageText({ text }: { text: string }) {
 interface Props {
   projectIdentifier: string;
   projectLabel: string;
+  loadWindow?: LoadWindow; // must match the window the dashboard loaded
   onApplyFilter: (patch: Partial<TicketFilters>) => void;
 }
 
@@ -38,7 +40,7 @@ interface Props {
  * scoped to the whole project, not whatever tracker/etc. filters are active elsewhere
  * in the UI. Resets whenever the project changes, since a conversation about one
  * project's tickets doesn't carry meaning for another. */
-export default function ChatPanel({ projectIdentifier, projectLabel, onApplyFilter }: Props) {
+export default function ChatPanel({ projectIdentifier, projectLabel, loadWindow = DEFAULT_WINDOW, onApplyFilter }: Props) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -72,7 +74,7 @@ export default function ChatPanel({ projectIdentifier, projectLabel, onApplyFilt
     setSending(true);
     setError(null);
     try {
-      const { reply, suggestedFilter } = await sendChatMessage(projectIdentifier, text, history);
+      const { reply, suggestedFilter } = await sendChatMessage(projectIdentifier, text, history, loadWindow);
       setMessages((prev) => [...prev, { role: "model", text: reply, suggestedFilter }]);
     } catch (err) {
       setError(

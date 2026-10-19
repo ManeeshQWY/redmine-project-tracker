@@ -3,13 +3,14 @@ import { useEffect, useState } from "react";
 interface Props {
   message: string;
   approxTotal?: number | null;
+  onCancel?: () => void;
 }
 
 /** No exact page-by-page progress is available for a single request/response fetch (see
  * README — real page-by-page progress would need a polling/streaming endpoint), but a
  * cheap upfront count call (see api.ts getIssueCount) gives an approximate total, which
  * combined with a live elapsed-seconds counter makes a 15-60s wait feel a lot less dead. */
-export default function LoadingIndicator({ message, approxTotal }: Props) {
+export default function LoadingIndicator({ message, approxTotal, onCancel }: Props) {
   const [elapsedMs, setElapsedMs] = useState(0);
 
   useEffect(() => {
@@ -28,6 +29,14 @@ export default function LoadingIndicator({ message, approxTotal }: Props) {
         <div className="h-full w-1/3 animate-[loading-slide_1.2s_ease-in-out_infinite] rounded-full bg-brand-500" />
       </div>
       <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">{(elapsedMs / 1000).toFixed(0)}s elapsed</p>
+      {onCancel && (
+        <button
+          onClick={onCancel}
+          className="mt-4 rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          Cancel
+        </button>
+      )}
     </div>
   );
 }

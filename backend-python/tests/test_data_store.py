@@ -71,7 +71,7 @@ class TestIssuesAndTimeEntriesArePerUser:
     async def test_issues_are_not_shared_between_users(self, monkeypatch):
         visible = {"narrow-key": issues_result(1), "broad-key": issues_result(1, 2, 3)}
 
-        async def fake_get_project_issues(project_identifier, api_key, on_progress=None):
+        async def fake_get_project_issues(project_identifier, api_key, on_progress=None, window=None):
             return visible[api_key]
 
         monkeypatch.setattr(data_store, "get_project_issues", fake_get_project_issues)
@@ -86,7 +86,7 @@ class TestIssuesAndTimeEntriesArePerUser:
     async def test_same_user_is_served_from_cache_and_refresh_refetches(self, monkeypatch):
         calls = []
 
-        async def fake_get_project_issues(project_identifier, api_key, on_progress=None):
+        async def fake_get_project_issues(project_identifier, api_key, on_progress=None, window=None):
             calls.append(api_key)
             return issues_result(1)
 
@@ -103,7 +103,7 @@ class TestIssuesAndTimeEntriesArePerUser:
     async def test_refresh_by_one_user_does_not_evict_another_users_cache(self, monkeypatch):
         calls = []
 
-        async def fake_get_project_issues(project_identifier, api_key, on_progress=None):
+        async def fake_get_project_issues(project_identifier, api_key, on_progress=None, window=None):
             calls.append(api_key)
             return issues_result(1)
 
@@ -120,7 +120,7 @@ class TestIssuesAndTimeEntriesArePerUser:
     async def test_time_entries_are_not_shared_between_users(self, monkeypatch):
         visible = {"narrow-key": entries_result(1), "broad-key": entries_result(1, 2, 3)}
 
-        async def fake_get_time_entries(project_identifier, api_key, on_progress=None):
+        async def fake_get_time_entries(project_identifier, api_key, on_progress=None, window=None):
             return visible[api_key]
 
         monkeypatch.setattr(data_store, "get_time_entries", fake_get_time_entries)
@@ -137,7 +137,7 @@ class TestIssuesAndTimeEntriesArePerUser:
 
         visible = {"narrow-key": issues_result(1), "broad-key": issues_result(1, 2)}
 
-        async def slow_get_project_issues(project_identifier, api_key, on_progress=None):
+        async def slow_get_project_issues(project_identifier, api_key, on_progress=None, window=None):
             await asyncio.sleep(0.01)
             return visible[api_key]
 

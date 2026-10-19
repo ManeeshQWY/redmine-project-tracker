@@ -477,3 +477,95 @@ describe("PerformanceDashboard bug-link summary", () => {
     expect(note.textContent).toContain("1 (1 CT) have no parent task");
   });
 });
+
+describe("PerformanceDashboard load window", () => {
+  const empty = { timeEntries: [], totalCount: 0, durationMs: 1, fetchedAt: "2026-03-20T00:00:00Z" };
+  const props = { projectIdentifier: "alpha", projectLabel: "Alpha", redmineBaseUrl: "https://r.test", issues: ISSUES, onSessionExpired: () => {} };
+
+  it("asks for time entries in the chosen window and says what it covers", async () => {
+    const getTime = vi.spyOn(api, "getTimeEntries").mockResolvedValue(empty);
+    vi.spyOn(api, "getUserRoles").mockResolvedValue(MASTER);
+    render(<PerformanceDashboard {...props} loadWindow={{ kind: "days", days: 90 }} />);
+    fireEvent.click(screen.getByRole("button", { name: /load performance data/i }));
+    await waitFor(() => expect(getTime).toHaveBeenCalledWith("alpha", false, { kind: "days", days: 90 }, expect.any(AbortSignal)));
+    await waitFor(() => expect(screen.getByText(/covers the last 90 days/)).toBeInTheDocument());
+  });
+
+  it("defaults to 30 days, and changing the window drops the loaded data and says all time for 0", async () => {
+    const getTime = vi.spyOn(api, "getTimeEntries").mockResolvedValue(empty);
+    vi.spyOn(api, "getUserRoles").mockResolvedValue(MASTER);
+    const { rerender } = render(<PerformanceDashboard {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: /load performance data/i }));
+    await waitFor(() => expect(getTime).toHaveBeenCalledWith("alpha", false, { kind: "days", days: 30 }, expect.any(AbortSignal)));
+
+    rerender(<PerformanceDashboard {...props} loadWindow={{ kind: "days", days: 0 }} />);
+    const reload = await screen.findByRole("button", { name: /load performance data/i });
+    fireEvent.click(reload);
+    await waitFor(() => expect(getTime).toHaveBeenLastCalledWith("alpha", false, { kind: "days", days: 0 }, expect.any(AbortSignal)));
+    await waitFor(() => expect(screen.getByText(/covers all time/)).toBeInTheDocument());
+  });
+});
+
+describe("PerformanceDashboard custom range and cancelling", () => {
+  const props = { projectIdentifier: "alpha", projectLabel: "Alpha", redmineBaseUrl: "https://r.test", issues: ISSUES, onSessionExpired: () => {} };
+
+  it("loads and describes an exact date range", async () => {
+    const getTime = vi.spyOn(api, "getTimeEntries").mockResolvedValue({ timeEntries: [], totalCount: 0, durationMs: 1, fetchedAt: "2026-03-20T00:00:00Z" });
+    vi.spyOn(api, "getUserRoles").mockResolvedValue(MASTER);
+    const range = { kind: "range", from: "2026-01-01", to: "2026-03-31" } as const;
+    render(<PerformanceDashboard {...props} loadWindow={range} />);
+    fireEvent.click(screen.getByRole("button", { name: /load performance data/i }));
+    await waitFor(() => expect(getTime).toHaveBeenCalledWith("alpha", false, range, expect.any(AbortSignal)));
+    await waitFor(() => expect(screen.getByText(/covers 1 Jan 2026 to 31 Mar 2026/)).toBeInTheDocument());
+  });
+
+  it("Cancel aborts the load and returns to the Load button", async () => {
+    let signal: AbortSignal | undefined;
+    vi.spyOn(api, "getTimeEntries").mockImplementation((_p, _r, _w, s) => {
+      signal = s;
+      return new Promise(() => {}); // never settles — a load still running
+    });
+    vi.spyOn(api, "getUserRoles").mockResolvedValue(MASTER);
+    render(<PerformanceDashboard {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: /load performance data/i }));
+    const cancel = await screen.findByRole("button", { name: "Cancel" });
+    expect(signal?.aborted).toBe(false);
+
+    fireEvent.click(cancel);
+
+    expect(signal?.aborted).toBe(true);
+    expect(await screen.findByRole("button", { name: /load performance data/i })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+  });
+
+  it("an aborted load is not reported as an error", async () => {
+    vi.spyOn(api, "getTimeEntries").mockImplementation((_p, _r, _w, s) => {
+      return new Promise((_resolve, reject) => {
+        s?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+      });
+    });
+    vi.spyOn(api, "getUserRoles").mockResolvedValue(MASTER);
+    render(<PerformanceDashboard {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: /load performance data/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /load performance data/i })).toBeEnabled());
+    expect(screen.queryByText(/unable to/i)).not.toBeInTheDocument();
+  });
+
+  it("changing the period while loading aborts the old load", async () => {
+    const signals: AbortSignal[] = [];
+    vi.spyOn(api, "getTimeEntries").mockImplementation((_p, _r, _w, s) => {
+      if (s) signals.push(s);
+      return new Promise(() => {});
+    });
+    vi.spyOn(api, "getUserRoles").mockResolvedValue(MASTER);
+    const { rerender } = render(<PerformanceDashboard {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: /load performance data/i }));
+    await screen.findByRole("button", { name: "Cancel" });
+
+    rerender(<PerformanceDashboard {...props} loadWindow={{ kind: "days", days: 90 }} />);
+
+    await waitFor(() => expect(signals[0].aborted).toBe(true));
+    expect(await screen.findByRole("button", { name: /load performance data/i })).toBeEnabled();
+  });
+});

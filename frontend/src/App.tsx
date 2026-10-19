@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ALL_PROJECTS, ApiError, CurrentUser, getCurrentUser, getIssueCount, getMeta, getVersions, getProjectIssues, getProjects, logout } from "./services/api";
+import { ALL_PROJECTS, ApiError, CurrentUser, getCurrentUser, isAbortError, getIssueCount, getMeta, getVersions, getProjectIssues, getProjects, logout } from "./services/api";
 import { Issue, MetaResult, ProjectMeta } from "./types/issue";
 import { applyFilters, EMPTY_FILTERS, TicketFilters } from "./utils/filters";
 import { aggregateByStatus, aggregateByTracker, aggregateByPriority, aggregateByTargetVersion } from "./utils/aggregations";
 import { exportToExcel } from "./utils/excelExport";
 import { useTheme } from "./theme";
+import { LoadWindow, readStoredWindow, storeWindow, windowKey, windowPhrase } from "./utils/dataWindow";
 
 import LoginScreen from "./components/LoginScreen";
 import ProjectSelector from "./components/ProjectSelector";
@@ -23,6 +24,7 @@ import QADashboard from "./components/QADashboard";
 import TimeSpentByUserPanel from "./components/TimeSpentByUserPanel";
 import PerformanceDashboard from "./components/PerformanceDashboard";
 import LoadingIndicator from "./components/LoadingIndicator";
+import DataWindowSelect from "./components/DataWindowSelect";
 import ClosedTicketsTrendPanel from "./components/ClosedTicketsTrendPanel";
 import UserAssignmentPanel from "./components/UserAssignmentPanel";
 import ChipMultiSelect from "./components/ChipMultiSelect";
@@ -70,6 +72,17 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<TicketFilters>(EMPTY_FILTERS);
   const [tab, setTab] = useState<Tab>(readStoredTab);
+  // The period to load (last N days, or an exact date range). Recent-only by default — see
+  // utils/dataWindow.
+  const [loadWindow, setLoadWindow] = useState<LoadWindow>(readStoredWindow);
+  const windowId = windowKey(loadWindow);
+  const loadedProjectRef = useRef<string | null>(null);
+  // The in-flight ticket load, so Cancel (or a newer load) can abort it — which also stops
+  // the server fetching from Redmine for it.
+  const loadAbortRef = useRef<AbortController | null>(null);
+  // What was last loaded successfully: Cancel returns here if the selection has since changed.
+  const lastLoadedRef = useRef<{ project: string; window: LoadWindow } | null>(null);
+  const [loadCancelled, setLoadCancelled] = useState(false);
   const { isDark, toggle: toggleTheme } = useTheme();
   // Guards against out-of-order responses: if the user switches projects (or hits
   // Refresh) again before an in-flight loadIssues() resolves, only the load that owns
@@ -120,6 +133,25 @@ export default function App() {
     localStorage.setItem(PROJECT_STORAGE_KEY, identifier);
   }
 
+  function changeWindow(next: LoadWindow) {
+    setLoadWindow(next);
+    storeWindow(next);
+  }
+
+  /** Abandons the load in progress. If that load came from changing the project or period,
+   * go back to what was on screen — the server still has it cached, so it returns at once. */
+  function cancelLoad() {
+    loadAbortRef.current?.abort();
+    const last = lastLoadedRef.current;
+    const selectionChanged = last !== null && (last.project !== selectedProject || windowKey(last.window) !== windowId);
+    if (last && selectionChanged) {
+      selectProject(last.project);
+      changeWindow(last.window);
+    } else {
+      setLoadCancelled(true);
+    }
+  }
+
   function selectTab(next: Tab) {
     setTab(next);
     localStorage.setItem(TAB_STORAGE_KEY, next);
@@ -138,30 +170,38 @@ export default function App() {
     // screen with only the Refresh button's label hinting that a switch is in progress.
     setIssues([]);
     loadIssues(selectedProject, false);
-    setFilters(EMPTY_FILTERS);
+    // Filters belong to a project; widening or narrowing only the window keeps them.
+    if (loadedProjectRef.current !== selectedProject) setFilters(EMPTY_FILTERS);
+    loadedProjectRef.current = selectedProject;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProject]);
+  }, [selectedProject, windowId]);
 
   async function loadIssues(projectIdentifier: string, forceRefresh: boolean) {
+    loadAbortRef.current?.abort(); // a newer load replaces any still running
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
     const token = ++loadTokenRef.current;
     setLoading(true);
     setError(null);
     setApproxTotal(null);
+    setLoadCancelled(false);
     // Fire-and-forget: a quick separate call just to preview the total count for the
     // loading screen. Never blocks or fails the real fetch — if it errors or arrives
     // late, the loading screen just keeps its generic message.
-    getIssueCount(projectIdentifier)
+    getIssueCount(projectIdentifier, loadWindow, controller.signal)
       .then((count) => {
         if (loadTokenRef.current === token) setApproxTotal(count);
       })
       .catch(() => undefined);
     try {
-      const result = await getProjectIssues(projectIdentifier, forceRefresh);
+      const result = await getProjectIssues(projectIdentifier, forceRefresh, loadWindow, controller.signal);
       if (loadTokenRef.current !== token) return; // superseded by a newer switch/refresh
       setIssues(result.issues);
       setLastRefreshed(result.fetchedAt);
       setLastFetchDurationMs(result.durationMs);
+      lastLoadedRef.current = { project: projectIdentifier, window: loadWindow };
     } catch (err) {
+      if (isAbortError(err)) return; // cancelled on purpose — not an error
       if (loadTokenRef.current === token) handleApiError(err);
     } finally {
       if (loadTokenRef.current === token) setLoading(false);
@@ -172,7 +212,7 @@ export default function App() {
    * time (cached server-side after the first call). If that lookup fails the export still
    * goes ahead — just without the date columns filled in. */
   async function exportWithReleaseDates(redmineBaseUrl: string, projectIdentifier: string, projectLabel: string) {
-    const versions = await getVersions(projectIdentifier).catch(() => []);
+    const versions = await getVersions(projectIdentifier, loadWindow).catch(() => []);
     await exportToExcel(filteredIssues, redmineBaseUrl, projectLabel, versions);
   }
 
@@ -296,28 +336,52 @@ export default function App() {
                   <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">{activeTab?.label}</h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400">{activeTab?.description}</p>
                 </div>
+                <div className="flex flex-wrap items-center gap-3">
+                <DataWindowSelect window={loadWindow} onChange={changeWindow} />
                 <RefreshBar
                   lastRefreshed={lastRefreshed}
                   lastFetchDurationMs={lastFetchDurationMs}
                   loading={loading}
                   onRefresh={() => loadIssues(selectedProject, true)}
+                  // The loading card has its own Cancel while nothing is on screen yet.
+                  onCancel={issues.length > 0 ? cancelLoad : undefined}
                   onExport={() => meta && exportWithReleaseDates(meta.redmineBaseUrl, selectedProject, selectedProjectLabel)}
                   exportDisabled={loading || filteredIssues.length === 0}
                   showExport={tab !== "performance"}
                 />
+                </div>
               </div>
 
               {loading && issues.length === 0 ? (
                 <LoadingIndicator
                   message={
-                    selectedProject === ALL_PROJECTS
-                      ? "Loading tickets from every project on the instance — this covers 19,000+ tickets and can take a minute or more…"
-                      : "Loading tickets from Redmine — this can take a while for large projects…"
+                    loadWindow.kind === "range" || loadWindow.days > 0
+                      ? `Loading tickets updated in ${windowPhrase(loadWindow)}…`
+                      : selectedProject === ALL_PROJECTS
+                        ? "Loading tickets from every project on the instance — this covers 19,000+ tickets and can take a minute or more…"
+                        : "Loading tickets from Redmine — this can take a while for large projects…"
                   }
                   approxTotal={approxTotal}
+                  onCancel={cancelLoad}
                 />
+              ) : loadCancelled && issues.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-white p-14 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <p className="text-slate-600 dark:text-slate-300">Loading was cancelled.</p>
+                  <button
+                    onClick={() => loadIssues(selectedProject, false)}
+                    className="mt-4 rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
+                  >
+                    Load again
+                  </button>
+                </div>
               ) : (
                 <>
+                  {(loadWindow.kind === "range" || loadWindow.days > 0) && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Showing {issues.length.toLocaleString()} tickets updated in {windowPhrase(loadWindow)}.
+                    </p>
+                  )}
+
                   {/* Global tracker filter — the one filter that applies uniformly across every tab
                       (Overview, Aging, Release, QA, Closed Trend, Open Tickets per User, and the Ticket
                       Table's own filters/export), rather than each panel having its own copy. */}
@@ -363,7 +427,7 @@ export default function App() {
                   </div>
                 )}
 
-                {tab === "release" && <ReleaseDashboard issues={filteredIssues} projectIdentifier={selectedProject} />}
+                {tab === "release" && <ReleaseDashboard issues={filteredIssues} projectIdentifier={selectedProject} loadWindow={loadWindow} />}
 
                 {tab === "qa" && <QADashboard issues={filteredIssues} />}
 
@@ -372,6 +436,7 @@ export default function App() {
                     projectIdentifier={selectedProject}
                     projectLabel={selectedProjectLabel}
                     issues={issues}
+                    loadWindow={loadWindow}
                     onSessionExpired={() => setUser(null)}
                   />
                 )}
@@ -383,6 +448,7 @@ export default function App() {
                     redmineBaseUrl={meta?.redmineBaseUrl ?? ""}
                     issues={issues}
                     trackers={filters.trackers}
+                    loadWindow={loadWindow}
                     onSessionExpired={() => setUser(null)}
                   />
                 )}
@@ -397,7 +463,7 @@ export default function App() {
         )}
       </div>
 
-      {selectedProject && <ChatPanel projectIdentifier={selectedProject} projectLabel={selectedProjectLabel} onApplyFilter={drillDown} />}
+      {selectedProject && <ChatPanel projectIdentifier={selectedProject} projectLabel={selectedProjectLabel} loadWindow={loadWindow} onApplyFilter={drillDown} />}
     </div>
   );
 }

@@ -30,10 +30,21 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
 
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    print(f"[http] {request.method} {request.url.path}")
-    return await call_next(request)
+class RequestLogMiddleware:
+    """Logs each request's method and path. A plain ASGI middleware on purpose: the
+    `@app.middleware("http")` style (BaseHTTPMiddleware) hides the client-disconnect signal
+    from the endpoint, which stops a cancelled load from being noticed (see disconnect.py)."""
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            print(f"[http] {scope['method']} {scope['path']}")
+        await self.inner(scope, receive, send)
+
+
+app.add_middleware(RequestLogMiddleware)
 
 
 @app.exception_handler(RedmineApiError)

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getVersions } from "../services/api";
+import { DEFAULT_WINDOW, LoadWindow, windowKey } from "../utils/dataWindow";
 import { Issue, VersionMeta } from "../types/issue";
 import { aggregateByRelease, releaseDatesByName } from "../utils/aggregations";
 import { formatDate, formatHours } from "../utils/format";
@@ -9,9 +10,10 @@ type SortKey = "total" | "closed" | "notClosed" | "bugs" | "features" | "totalEs
 interface Props {
   issues: Issue[];
   projectIdentifier: string;
+  loadWindow?: LoadWindow;
 }
 
-export default function ReleaseDashboard({ issues, projectIdentifier }: Props) {
+export default function ReleaseDashboard({ issues, projectIdentifier, loadWindow = DEFAULT_WINDOW }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("total");
   const [versions, setVersions] = useState<VersionMeta[]>([]);
   const [versionsError, setVersionsError] = useState(false);
@@ -22,7 +24,7 @@ export default function ReleaseDashboard({ issues, projectIdentifier }: Props) {
     let cancelled = false;
     setVersions([]);
     setVersionsError(false);
-    getVersions(projectIdentifier)
+    getVersions(projectIdentifier, loadWindow)
       .then((v) => {
         if (!cancelled) setVersions(v);
       })
@@ -32,7 +34,7 @@ export default function ReleaseDashboard({ issues, projectIdentifier }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [projectIdentifier]);
+  }, [projectIdentifier, windowKey(loadWindow)]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dateByName = useMemo(() => releaseDatesByName(versions), [versions]);
 

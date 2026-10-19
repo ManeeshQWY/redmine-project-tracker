@@ -2,6 +2,7 @@ import asyncio
 import time
 from typing import Any
 
+from .load_window import ALL_TIME, LoadWindow
 from .models import Issue, PriorityMeta, ProjectIssuesResult, ProjectMeta, StatusMeta, TimeEntriesResult, TrackerMeta, VersionMeta
 from .redmine_client import ProgressCallback, fetch_all_paginated, request_json
 from .transform import transform_issue, transform_time_entry
@@ -124,12 +125,24 @@ async def get_versions_by_ids(version_ids: list[int], api_key: str) -> list[Vers
     return results
 
 
-async def get_issue_count(project_identifier: str | None, api_key: str) -> int:
+def _issues_path(project_identifier: str | None, window: LoadWindow) -> str:
+    is_all_projects = not project_identifier or project_identifier == ALL_PROJECTS
+    path = "/issues.json?status_id=*" if is_all_projects else f"/issues.json?project_id={project_identifier}&status_id=*"
+    # Tickets by when they were last updated. Redmine's filter operators: ">=" , "<=" and
+    # "><" (between, "start|end"), URL-encoded.
+    if window.start and window.end:
+        path += f"&updated_on=%3E%3C{window.start}%7C{window.end}"
+    elif window.start:
+        path += f"&updated_on=%3E%3D{window.start}"
+    elif window.end:
+        path += f"&updated_on=%3C%3D{window.end}"
+    return path
+
+
+async def get_issue_count(project_identifier: str | None, api_key: str, window: LoadWindow = ALL_TIME) -> int:
     """Single cheap request (limit=1) just to read total_count — lets the frontend show
     "~X tickets to load" immediately, without waiting for the full paginated fetch."""
-    is_all_projects = not project_identifier or project_identifier == ALL_PROJECTS
-    path = "/issues.json?status_id=*&limit=1" if is_all_projects else f"/issues.json?project_id={project_identifier}&status_id=*&limit=1"
-    res = await request_json(path, api_key)
+    res = await request_json(f"{_issues_path(project_identifier, window)}&limit=1", api_key)
     return int(res.get("total_count", 0))
 
 
@@ -137,12 +150,14 @@ async def get_project_issues(
     project_identifier: str | None,
     api_key: str,
     on_progress: ProgressCallback | None = None,
+    window: LoadWindow = ALL_TIME,
 ) -> ProjectIssuesResult:
-    """Fetches all issues for a single project (subprojects are included automatically
-    by Redmine), or for the whole instance when project_identifier is None/ALL_PROJECTS."""
+    """Fetches the issues for a single project (subprojects are included automatically
+    by Redmine), or for the whole instance when project_identifier is None/ALL_PROJECTS.
+    `window` limits it to tickets last updated within that period."""
     start = time.monotonic()
     is_all_projects = not project_identifier or project_identifier == ALL_PROJECTS
-    path = "/issues.json?status_id=*" if is_all_projects else f"/issues.json?project_id={project_identifier}&status_id=*"
+    path = _issues_path(project_identifier, window)
 
     async def load_user_map() -> dict[int, str]:
         try:
@@ -156,11 +171,17 @@ async def get_project_issues(
         load_user_map(),
     )
 
-    issues: list[Issue] = [transform_issue(raw, user_map) for raw in raw_issues]
+    total = len(raw_issues)
+    # Convert while releasing the raw Redmine dicts (description + every custom field), so
+    # the raw and converted copies are never both held in full — roughly halves peak memory.
+    issues: list[Issue] = []
+    while raw_issues:
+        issues.append(transform_issue(raw_issues.pop(), user_map))
+    issues.reverse()
 
     return ProjectIssuesResult(
         issues=issues,
-        totalCount=len(raw_issues),
+        totalCount=total,
         fetchedCount=len(issues),
         durationMs=int((time.monotonic() - start) * 1000),
         fetchedAt=_iso_now(),
@@ -171,17 +192,25 @@ async def get_time_entries(
     project_identifier: str | None,
     api_key: str,
     on_progress: ProgressCallback | None = None,
+    window: LoadWindow = ALL_TIME,
 ) -> TimeEntriesResult:
     """Fetches time entries (who actually logged time, not just who an issue is
     assigned to) for a single project or the whole instance. Volume can be very large
     (tens of thousands for "All Projects"), so callers should treat this as an
-    explicit, on-demand action rather than something to auto-fetch."""
+    explicit, on-demand action rather than something to auto-fetch. `window` limits it
+    to time spent within that period."""
     start = time.monotonic()
     is_all_projects = not project_identifier or project_identifier == ALL_PROJECTS
     path = "/time_entries.json" if is_all_projects else f"/time_entries.json?project_id={project_identifier}"
+    for name, value in (("from", window.start), ("to", window.end)):
+        if value:
+            path += ("&" if "?" in path else "?") + f"{name}={value}"
 
     raw_entries = await fetch_all_paginated(path, "time_entries", api_key, 100, on_progress)
-    time_entries = [transform_time_entry(raw) for raw in raw_entries]
+    time_entries = []
+    while raw_entries:
+        time_entries.append(transform_time_entry(raw_entries.pop()))
+    time_entries.reverse()
 
     return TimeEntriesResult(
         timeEntries=time_entries,

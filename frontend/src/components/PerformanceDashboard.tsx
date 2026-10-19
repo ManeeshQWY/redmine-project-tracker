@@ -1,6 +1,7 @@
 import { Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, getTimeEntries, getUserRoles } from "../services/api";
+import { ApiError, getTimeEntries, getUserRoles, isAbortError } from "../services/api";
 import { Issue, TimeEntry, UserRolesResult } from "../types/issue";
+import { DEFAULT_WINDOW, LoadWindow, windowKey, windowPhrase } from "../utils/dataWindow";
 import { exportPerformanceToExcel } from "../utils/excelExport";
 import { formatDateTime, formatHours } from "../utils/format";
 import {
@@ -33,6 +34,7 @@ interface Props {
   // The app-wide Tracker chips. Applied to which TASKS get a row (a Bug filter shows only
   // Bug tasks); consolidation still reads every ticket so a parent's totals stay whole.
   trackers?: string[];
+  loadWindow?: LoadWindow; // the period tickets are updated in / time is logged in
   onSessionExpired: () => void;
 }
 
@@ -254,7 +256,7 @@ function allGroupIds(groups: PerformanceGroup[]): string[] {
   return groups.flatMap((g) => [g.id, ...allGroupIds(g.children)]);
 }
 
-export default function PerformanceDashboard({ projectIdentifier, projectLabel, redmineBaseUrl, issues, trackers = [], onSessionExpired }: Props) {
+export default function PerformanceDashboard({ projectIdentifier, projectLabel, redmineBaseUrl, issues, trackers = [], loadWindow = DEFAULT_WINDOW, onSessionExpired }: Props) {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -271,9 +273,15 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
   const [shown, setShown] = useState(FLAT_PAGE_SIZE);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState(false);
+  // The load in progress, so Cancel (or leaving) can abort it — which stops the server too.
+  const abortRef = useRef<AbortController | null>(null);
+  const windowId = windowKey(loadWindow);
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   // A different project invalidates everything that was loaded or chosen for the last one.
   useEffect(() => {
+    abortRef.current?.abort();
+    setLoading(false);
     setTimeEntries(null);
     setError(null);
     setFetchedAt(null);
@@ -283,7 +291,7 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
     setFacetValue("");
     setExpanded(new Set());
     setShown(FLAT_PAGE_SIZE);
-  }, [projectIdentifier]);
+  }, [projectIdentifier, windowId]);
 
   // Every hook below runs unconditionally on every render — the "load" early return
   // comes after them (an early return above a hook crashed this app once already).
@@ -333,13 +341,16 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
   }, [scopedRows, facetField, draft.filters]);
 
   async function load(forceRefresh: boolean) {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     setError(null);
     try {
       // The master role list is tiny and read fresh each time. If it can't be fetched the
       // report still loads, with everyone shown as Unknown and the reason on screen.
       const [result, roleList] = await Promise.all([
-        getTimeEntries(projectIdentifier, forceRefresh),
+        getTimeEntries(projectIdentifier, forceRefresh, loadWindow, controller.signal),
         getUserRoles().catch((err): UserRolesResult => {
           if (err instanceof ApiError && err.status === 401) throw err;
           return { developers: [], qa: [], conflicts: [], error: "The Developer/QA master list could not be loaded." };
@@ -349,14 +360,20 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
       setFetchedAt(result.fetchedAt);
       setRoles(roleList);
     } catch (err) {
+      if (isAbortError(err)) return; // cancelled on purpose
       if (err instanceof ApiError && err.status === 401) {
         onSessionExpired();
         return;
       }
       setError(err instanceof ApiError ? err.message : "Unable to load time entries.");
     } finally {
-      setLoading(false);
+      if (abortRef.current === controller) setLoading(false);
     }
+  }
+
+  function cancelLoad() {
+    abortRef.current?.abort();
+    setLoading(false);
   }
 
   if (timeEntries === null) {
@@ -377,6 +394,14 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
         >
           {loading ? "Loading time entries…" : "Load Performance Data"}
         </button>
+        {loading && (
+          <button
+            onClick={cancelLoad}
+            className="ml-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Cancel
+          </button>
+        )}
       </div>
     );
   }
@@ -536,6 +561,7 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
             <p className="text-xs text-slate-400 dark:text-slate-500">
               {filteredRows.length.toLocaleString()} of {scopedRows.length.toLocaleString()} rows · {formatHours(totals.actuals) || "0"}h actual
               {totals.estimation !== null ? ` vs ${formatHours(totals.estimation) || "0"}h estimated` : ""} · {totals.bugsReported} bugs ({totals.ctBugs} CT)
+              {` · covers ${windowPhrase(loadWindow)}`}
               {fetchedAt && ` · time data loaded ${formatDateTime(fetchedAt)}`}
             </p>
             {linkStats.bugs > 0 && (
@@ -559,6 +585,11 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
             <button onClick={() => load(true)} disabled={loading} className={buttonCls}>
               {loading ? "Refreshing…" : "Refresh Time Data"}
             </button>
+            {loading && (
+              <button onClick={cancelLoad} className={buttonCls}>
+                Cancel
+              </button>
+            )}
           </div>
         </div>
 
@@ -787,6 +818,11 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
             <span className="font-medium">Totals and group subtotals</span> count each hour and bug once per person: when a task and
             one of its child tasks both appear for the same person, only the parent is added (it already includes the child).
             Individual rows are not reduced, so a column can add up to more than its total.
+          </li>
+          <li>
+            <span className="font-medium">Loaded period</span>: only tickets updated, and time logged, in the period chosen at the top
+            of the page are included. A parent task last touched before that period isn&apos;t loaded, so it has no consolidated row of
+            its own — choose a longer period to include it.
           </li>
           <li>
             <span className="font-medium">Activity from/to</span> limits hours to time logged in that window and bugs to those created in

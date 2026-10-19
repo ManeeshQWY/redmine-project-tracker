@@ -211,3 +211,54 @@ describe("TimeSpentByUserPanel", () => {
     await waitFor(() => expect(screen.queryByText("No time is logged outside a ticket.")).not.toBeInTheDocument());
   });
 });
+
+describe("TimeSpentByUserPanel load window", () => {
+  it("requests the chosen window and states it", async () => {
+    const getTime = vi.spyOn(api, "getTimeEntries").mockResolvedValue({
+      timeEntries: [makeTimeEntry({ user: "Rangeen Suresh", hours: 5 })],
+      totalCount: 1,
+      durationMs: 5,
+      fetchedAt: "2026-01-01T00:00:00Z",
+    });
+    render(<TimeSpentByUserPanel projectIdentifier="qdesk" projectLabel="QDesk" issues={[makeIssue()]} loadWindow={{ kind: "days", days: 90 }} onSessionExpired={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /load time data/i }));
+    await waitFor(() => expect(getTime).toHaveBeenCalledWith("qdesk", false, { kind: "days", days: 90 }, expect.any(AbortSignal)));
+    await waitFor(() => expect(screen.getByText(/time logged in the last 90 days/)).toBeInTheDocument());
+  });
+});
+
+describe("TimeSpentByUserPanel cancelling", () => {
+  it("Cancel aborts the load and returns to the Load button", async () => {
+    let signal: AbortSignal | undefined;
+    vi.spyOn(api, "getTimeEntries").mockImplementation((_p, _r, _w, s) => {
+      signal = s;
+      return new Promise(() => {});
+    });
+    render(<TimeSpentByUserPanel projectIdentifier="qdesk" projectLabel="QDesk" issues={[makeIssue()]} onSessionExpired={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /load time data/i }));
+    const cancel = await screen.findByRole("button", { name: "Cancel" });
+    fireEvent.click(cancel);
+    expect(signal?.aborted).toBe(true);
+    expect(await screen.findByRole("button", { name: /load time data/i })).toBeEnabled();
+  });
+
+  it("describes an exact date range", async () => {
+    vi.spyOn(api, "getTimeEntries").mockResolvedValue({
+      timeEntries: [makeTimeEntry({ user: "Rangeen Suresh", hours: 5 })],
+      totalCount: 1,
+      durationMs: 5,
+      fetchedAt: "2026-01-01T00:00:00Z",
+    });
+    render(
+      <TimeSpentByUserPanel
+        projectIdentifier="qdesk"
+        projectLabel="QDesk"
+        issues={[makeIssue()]}
+        loadWindow={{ kind: "range", from: "2026-01-01", to: "2026-03-31" }}
+        onSessionExpired={() => {}}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /load time data/i }));
+    await waitFor(() => expect(screen.getByText(/time logged in 1 Jan 2026 to 31 Mar 2026/)).toBeInTheDocument());
+  });
+});

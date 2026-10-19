@@ -212,6 +212,30 @@ Captured by live inspection of `support.qwysoft.com` before writing any code (se
   distinct users viewing a project — worth watching on a memory-constrained free-tier
   host. TTLs: 15 min for tickets/time entries, 1h for the rest.
 
+## Load window (recent data by default)
+
+Loading a whole large instance is slow and can exhaust the free host's memory, so by default
+only **tickets updated in the last 30 days** and **time logged in the last 30 days** are
+loaded. The "Tickets updated in" selector at the top of the page widens it (90 days, 6
+months, 12 months, all time) or takes an exact **custom date range** (pick "Custom range…",
+choose From/To, click Apply). Presets load immediately and are remembered; a custom range is
+a one-off and is not remembered.
+
+- **Cancel.** While a load runs there is a **Cancel** button. Cancelling a change of period
+  or project goes back to what was on screen (the server still has it cached); cancelling the
+  very first load offers "Load again"; cancelling a Refresh keeps the tickets already shown.
+  Cancelling also stops the *server* fetching from Redmine for it (the backend notices the
+  dropped connection), so an accidental "All time" doesn't keep consuming memory.
+- **API.** The issues, count, versions, time-entries and chat endpoints take `?days=30`
+  (`0` = no limit) or `?from=YYYY-MM-DD&to=YYYY-MM-DD` (a range wins over `days`; a bad or
+  backwards range is a 400). Tickets are filtered by last-updated date, time entries by date
+  spent.
+- **Memory.** The issue/time-entry caches are keyed per user, project **and** period, and are
+  capped to a few datasets so memory can't grow without bound.
+- Tickets nobody has touched within the period — including older parent tasks — are not
+  loaded, so Overview/Aging numbers cover only the loaded tickets; the page says what period
+  it is showing.
+
 ## Developer / QA master list
 
 The Dev & QA Performance tab takes a person's role **only** from

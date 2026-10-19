@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { ALL_PROJECTS, ApiError, getTimeEntries } from "../services/api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ALL_PROJECTS, ApiError, getTimeEntries, isAbortError } from "../services/api";
 import { Issue, TimeEntry } from "../types/issue";
+import { DEFAULT_WINDOW, LoadWindow, windowKey, windowPhrase } from "../utils/dataWindow";
 import { aggregateTimeByUser, aggregateTimeByUserAndMonth } from "../utils/aggregations";
 import { exportTimeSpentToExcel } from "../utils/excelExport";
 import { blank, formatDate, formatDateTime, formatHours } from "../utils/format";
@@ -13,6 +14,7 @@ interface Props {
   // elsewhere in the app, so a rollup can't silently miss a child ticket of a
   // different tracker than its parent.
   issues: Issue[];
+  loadWindow?: LoadWindow; // the period time is loaded for
   onSessionExpired: () => void;
 }
 
@@ -42,7 +44,7 @@ function collectDescendantIds(rootId: number, issues: Issue[]): Set<number> {
   return collected;
 }
 
-export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, issues, onSessionExpired }: Props) {
+export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, issues, loadWindow = DEFAULT_WINDOW, onSessionExpired }: Props) {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,16 +52,22 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
   const [ticketIdFilter, setTicketIdFilter] = useState("");
   const [monthFilter, setMonthFilter] = useState(""); // "" = All Months
   const [exporting, setExporting] = useState(false);
+  // The load in progress, so Cancel (or leaving) can abort it — which stops the server too.
+  const abortRef = useRef<AbortController | null>(null);
+  const windowId = windowKey(loadWindow);
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   // A different project was selected — the previously loaded data is stale, so drop it
   // and require an explicit reload rather than silently showing the wrong project's data.
   useEffect(() => {
+    abortRef.current?.abort();
+    setLoading(false);
     setTimeEntries(null);
     setError(null);
     setFetchedAt(null);
     setTicketIdFilter("");
     setMonthFilter("");
-  }, [projectIdentifier]);
+  }, [projectIdentifier, windowId]);
 
   const trimmedFilter = ticketIdFilter.trim();
   const rootTicketId = trimmedFilter && /^\d+$/.test(trimmedFilter) ? Number(trimmedFilter) : null;
@@ -73,21 +81,30 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
   const descendantIds = useMemo(() => (rootTicketId !== null ? collectDescendantIds(rootTicketId, issues) : null), [rootTicketId, issues]);
 
   async function load(forceRefresh: boolean) {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     setError(null);
     try {
-      const result = await getTimeEntries(projectIdentifier, forceRefresh);
+      const result = await getTimeEntries(projectIdentifier, forceRefresh, loadWindow, controller.signal);
       setTimeEntries(result.timeEntries);
       setFetchedAt(result.fetchedAt);
     } catch (err) {
+      if (isAbortError(err)) return; // cancelled on purpose
       if (err instanceof ApiError && err.status === 401) {
         onSessionExpired();
         return;
       }
       setError(err instanceof ApiError ? err.message : "Unable to load time entries.");
     } finally {
-      setLoading(false);
+      if (abortRef.current === controller) setLoading(false);
     }
+  }
+
+  function cancelLoad() {
+    abortRef.current?.abort();
+    setLoading(false);
   }
 
   if (timeEntries === null) {
@@ -110,6 +127,14 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
         >
           {loading ? "Loading time entries…" : "Load Time Data"}
         </button>
+        {loading && (
+          <button
+            onClick={cancelLoad}
+            className="ml-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Cancel
+          </button>
+        )}
       </div>
     );
   }
@@ -186,6 +211,7 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
               {rootTicketId !== null
                 ? `${monthFilteredEntries.length.toLocaleString()} entries on #${rootTicketId}${childCount > 0 ? ` + ${childCount} child ticket${childCount === 1 ? "" : "s"}` : ""} · ${formatHours(grandTotal)}h total`
                 : `${monthFilteredEntries.length.toLocaleString()} time entries · ${formatHours(grandTotal)}h total`}
+              {` · time logged in ${windowPhrase(loadWindow)}`}
               {fetchedAt && ` · loaded ${formatDateTime(fetchedAt)}`}
             </p>
           </div>
@@ -204,6 +230,14 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
             >
               {loading ? "Refreshing…" : "Refresh Time Data"}
             </button>
+            {loading && (
+              <button
+                onClick={cancelLoad}
+                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                Cancel
+              </button>
+            )}
           </div>
         </div>
 

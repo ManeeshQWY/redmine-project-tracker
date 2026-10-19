@@ -5,6 +5,7 @@ from ..chat_tools import build_tools
 from ..data_store import load_project_issues
 from ..dependencies import require_session
 from ..gemini_service import ChatNotConfiguredError, ask
+from ..load_window import LoadWindow, load_window_params
 from ..redmine_service import ALL_PROJECTS
 from ..session_store import Session
 
@@ -22,15 +23,21 @@ class ChatRequest(BaseModel):
 
 
 @router.post("/{project_identifier}/chat")
-async def chat_route(project_identifier: str, body: ChatRequest, session: Session = Depends(require_session)):
+async def chat_route(
+    project_identifier: str,
+    body: ChatRequest,
+    # Must match the window the dashboard loaded, so chat reads the same cached tickets.
+    window: LoadWindow = Depends(load_window_params),
+    session: Session = Depends(require_session),
+):
     if not body.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
     # Reuses the same cache the dashboard itself reads from — no extra Redmine call for
     # a project you're already viewing. Scoped to the whole project's tickets, not
     # whatever tracker/etc. filters happen to be active in the UI right now.
-    result = await load_project_issues(session.api_key, session.user.id, project_identifier, False)
-    tools, filter_recorder = build_tools(result.issues, session.api_key, session.user.id, project_identifier)
+    result = await load_project_issues(session.api_key, session.user.id, project_identifier, False, window)
+    tools, filter_recorder = build_tools(result.issues, session.api_key, session.user.id, project_identifier, window)
     project_label = "All Projects" if project_identifier == ALL_PROJECTS else project_identifier
 
     try:

@@ -26,6 +26,7 @@ from .aggregations import (
     resolution_time_stats,
 )
 from .data_store import load_time_entries
+from .load_window import ALL_TIME, LoadWindow
 from .models import Issue
 
 MAX_RESULTS = 15
@@ -94,7 +95,9 @@ def _detail(issue: Issue) -> dict:
     }
 
 
-def build_tools(issues: list[Issue], api_key: str, user_id: int, project_identifier: str) -> tuple[list[Callable], dict]:
+def build_tools(
+    issues: list[Issue], api_key: str, user_id: int, project_identifier: str, window: LoadWindow = ALL_TIME
+) -> tuple[list[Callable], dict]:
     """Builds a fresh set of tool functions closing over this exact issue snapshot —
     called once per chat request, never shared or mutated across requests. Also returns
     a `filter_recorder` dict, auto-populated with search_tickets' filter args whenever a
@@ -134,7 +137,7 @@ def build_tools(issues: list[Issue], api_key: str, user_id: int, project_identif
         if ticket_id not in by_id:
             return {"found": False, "entries": []}
         descendant_ids = _collect_descendant_ids(ticket_id, issues)
-        result = await load_time_entries(api_key, user_id, project_identifier, False)
+        result = await load_time_entries(api_key, user_id, project_identifier, False, window)
         matching = [e for e in result.timeEntries if e.issueId in descendant_ids]
         return {
             "found": True,

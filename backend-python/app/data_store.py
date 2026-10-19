@@ -1,5 +1,6 @@
 from .cache import InFlightGuard, TtlCache
 from .config import REDMINE_BASE_URL
+from .load_window import ALL_TIME, LoadWindow
 from .models import MetaResult, PriorityMeta, ProjectIssuesResult, ProjectMeta, StatusMeta, TimeEntriesResult, TrackerMeta, VersionMeta
 from .redmine_service import (
     get_priorities,
@@ -24,19 +25,24 @@ SHARED_KEY = "shared"
 # privileged one. The cost is memory growing with the number of distinct users viewing
 # a project (the host is memory-constrained, so watch this if the user base grows).
 # Only data that is identical for everyone (statuses/trackers/priorities) stays shared.
-_issues_cache: TtlCache[ProjectIssuesResult] = TtlCache(ISSUES_TTL_SECONDS)
+# The big ones are capped by entry count: each value can be thousands of tickets, and the
+# host has little memory, so the oldest dataset is dropped rather than letting several
+# users' loads pile up until the process is killed.
+MAX_CACHED_DATASETS = 4
+_issues_cache: TtlCache[ProjectIssuesResult] = TtlCache(ISSUES_TTL_SECONDS, max_entries=MAX_CACHED_DATASETS)
 _projects_cache: TtlCache[list[ProjectMeta]] = TtlCache(META_TTL_SECONDS)
 _statuses_cache: TtlCache[list[StatusMeta]] = TtlCache(META_TTL_SECONDS)
 _trackers_cache: TtlCache[list[TrackerMeta]] = TtlCache(META_TTL_SECONDS)
 _priorities_cache: TtlCache[list[PriorityMeta]] = TtlCache(META_TTL_SECONDS)
-_time_entries_cache: TtlCache[TimeEntriesResult] = TtlCache(TIME_ENTRIES_TTL_SECONDS)
+_time_entries_cache: TtlCache[TimeEntriesResult] = TtlCache(TIME_ENTRIES_TTL_SECONDS, max_entries=MAX_CACHED_DATASETS)
 _versions_cache: TtlCache[list[VersionMeta]] = TtlCache(META_TTL_SECONDS)
 _issues_in_flight: InFlightGuard[ProjectIssuesResult] = InFlightGuard()
 _time_entries_in_flight: InFlightGuard[TimeEntriesResult] = InFlightGuard()
 
 
-def _scoped_key(user_id: int, project_identifier: str) -> str:
-    return f"user:{user_id}:{project_identifier}"
+def _scoped_key(user_id: int, project_identifier: str, window: LoadWindow = ALL_TIME) -> str:
+    # The window is part of the key: a 30-day load and an all-time load are different datasets.
+    return f"user:{user_id}:{project_identifier}:{window.key}"
 
 
 async def load_projects(api_key: str, user_id: int) -> list[ProjectMeta]:
@@ -75,9 +81,9 @@ async def load_meta(api_key: str) -> MetaResult:
 
 
 async def load_project_issues(
-    api_key: str, user_id: int, project_identifier: str, force_refresh: bool
+    api_key: str, user_id: int, project_identifier: str, force_refresh: bool, window: LoadWindow = ALL_TIME
 ) -> ProjectIssuesResult:
-    key = _scoped_key(user_id, project_identifier)
+    key = _scoped_key(user_id, project_identifier, window)
     if not force_refresh:
         cached = _issues_cache.get(key)
         if cached is not None:
@@ -95,7 +101,7 @@ async def load_project_issues(
             total_pages = pages
             print(f"[redmine] Page {page}/{pages} — {fetched}/{total} issues retrieved")
 
-        result = await get_project_issues(project_identifier, api_key, on_progress)
+        result = await get_project_issues(project_identifier, api_key, on_progress, window=window)
         print(f'[redmine] Retrieved {len(result.issues)} issues for "{project_identifier}" across {total_pages} page(s) in {result.durationMs / 1000:.1f}s')
         _issues_cache.set(key, result)
         return result
@@ -103,15 +109,17 @@ async def load_project_issues(
     return await _issues_in_flight.run(key, fetch)
 
 
-async def load_versions(api_key: str, user_id: int, project_identifier: str) -> list[VersionMeta]:
+async def load_versions(
+    api_key: str, user_id: int, project_identifier: str, window: LoadWindow = ALL_TIME
+) -> list[VersionMeta]:
     """Dates for every target version that appears on this project's tickets. Derived
     from the (cached) issue list rather than a separate Redmine listing — see
     get_versions_by_ids for why. Cached for an hour; version dates rarely change."""
-    key = _scoped_key(user_id, project_identifier)
+    key = _scoped_key(user_id, project_identifier, window)
     cached = _versions_cache.get(key)
     if cached is not None:
         return cached
-    issues_result = await load_project_issues(api_key, user_id, project_identifier, False)
+    issues_result = await load_project_issues(api_key, user_id, project_identifier, False, window)
     ids = [i.targetVersionId for i in issues_result.issues if i.targetVersionId is not None]
     versions = await get_versions_by_ids(ids, api_key)
     _versions_cache.set(key, versions)
@@ -119,9 +127,9 @@ async def load_versions(api_key: str, user_id: int, project_identifier: str) -> 
 
 
 async def load_time_entries(
-    api_key: str, user_id: int, project_identifier: str, force_refresh: bool
+    api_key: str, user_id: int, project_identifier: str, force_refresh: bool, window: LoadWindow = ALL_TIME
 ) -> TimeEntriesResult:
-    key = _scoped_key(user_id, project_identifier)
+    key = _scoped_key(user_id, project_identifier, window)
     if not force_refresh:
         cached = _time_entries_cache.get(key)
         if cached is not None:
@@ -141,7 +149,7 @@ async def load_time_entries(
             total_pages = pages
             print(f"[redmine] Time entries page {page}/{pages} — {fetched}/{total} retrieved")
 
-        result = await get_time_entries(project_identifier, api_key, on_progress)
+        result = await get_time_entries(project_identifier, api_key, on_progress, window=window)
         print(
             f'[redmine] Retrieved {len(result.timeEntries)} time entries for "{project_identifier}" across {total_pages} page(s) in {result.durationMs / 1000:.1f}s'
         )

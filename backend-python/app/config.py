@@ -19,5 +19,11 @@ IS_PRODUCTION = os.environ.get("ENVIRONMENT") == "production"
 # starting; the chat endpoint just returns a "not configured" error until it's set.
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
+# How far back tickets (by last update) and time entries (by date spent) are loaded unless
+# the caller asks otherwise. Loading everything is slow and, for a large instance, can
+# exhaust the free host's memory; 0 means "no limit".
+DEFAULT_WINDOW_DAYS = 30
+MAX_WINDOW_DAYS = 3650
+
 SESSION_COOKIE_NAME = "rtt_sid"
 SESSION_TTL_SECONDS = 12 * 60 * 60  # 12 hours, matches the Node backend
