@@ -124,7 +124,7 @@ It listens on `http://localhost:5173` and proxies `/api/*` to the backend (see
    expires, or the backend restarts.
 4. Explore the tabs: Overview (KPIs + breakdown charts), Ticket Table (search/filter/sort,
    clickable ticket links), Aging & Resolution, Release Dashboard, QA Dashboard,
-   Time Spent by User, Dev & QA Performance (per-person estimation/actuals/bugs per task with
+   Parent Progress, Time Spent by User, Dev & QA Performance (per-person estimation/actuals/bugs per task with
    filters, grouping and its own Excel export), and more.
 5. Click **Export to Excel** to download a 4-sheet workbook (Master Tickets, Summary, Time
    Analysis, Aging) reflecting the currently selected project and filters.
@@ -211,6 +211,19 @@ Captured by live inspection of `support.qwysoft.com` before writing any code (se
   identical for everyone, are shared. Cache memory therefore grows with the number of
   distinct users viewing a project — worth watching on a memory-constrained free-tier
   host. TTLs: 15 min for tickets/time entries, 1h for the rest.
+
+## Parent Progress tab
+
+For every ticket that has child tickets (Epic, Feature, Story, …) it shows how many tickets
+sit under it, split by status in a stacked chart and a table, with **% closed** (closed ÷ all
+nested tickets), the children's average % done, and Redmine's own estimate and time-spent
+totals for the parent. Click a row to list its children; export gives a parent sheet plus a
+child-ticket sheet. The Tracker chips at the top choose which *parents* are listed; children
+of any tracker are always counted. Choose "Direct children only" to ignore grandchildren.
+Because it needs every child to be accurate, it warns (with a one-click **Load all time**)
+when only a recent period is loaded. Status colours follow the status itself (Redmine's
+status order, up to eight, the rest folded into a grey "Other") and come from a palette
+checked for colour-blind separation.
 
 ## Load window (recent data by default)
 

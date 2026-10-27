@@ -23,6 +23,7 @@ import ReleaseDashboard from "./components/ReleaseDashboard";
 import QADashboard from "./components/QADashboard";
 import TimeSpentByUserPanel from "./components/TimeSpentByUserPanel";
 import PerformanceDashboard from "./components/PerformanceDashboard";
+import ParentProgressPanel from "./components/ParentProgressPanel";
 import LoadingIndicator from "./components/LoadingIndicator";
 import DataWindowSelect from "./components/DataWindowSelect";
 import ClosedTicketsTrendPanel from "./components/ClosedTicketsTrendPanel";
@@ -31,11 +32,12 @@ import ChipMultiSelect from "./components/ChipMultiSelect";
 import ChatPanel from "./components/ChatPanel";
 import { LogoMark, TabIcon } from "./components/icons";
 
-type Tab = "overview" | "tickets" | "aging" | "release" | "qa" | "time" | "performance" | "closedTrend" | "myAssigned";
+type Tab = "overview" | "tickets" | "parents" | "aging" | "release" | "qa" | "time" | "performance" | "closedTrend" | "myAssigned";
 
 const TABS: { id: Tab; label: string; description: string }[] = [
   { id: "overview", label: "Overview", description: "Key metrics and breakdowns across the current selection." },
   { id: "tickets", label: "Ticket Table", description: "Full ticket list with detailed filters and search." },
+  { id: "parents", label: "Parent Progress", description: "Child tickets under each Epic, Feature or other parent — by status, with percent complete." },
   { id: "aging", label: "Aging & Resolution", description: "How long open tickets have sat, and how fast they close." },
   { id: "release", label: "Release Dashboard", description: "Tickets grouped by target version." },
   { id: "qa", label: "QA Dashboard", description: "QA-focused tracker and status breakdowns." },
@@ -416,6 +418,18 @@ export default function App() {
                     <FiltersBar issues={issues} filters={filters} onChange={setFilters} />
                     <TicketTable issues={filteredIssues} redmineBaseUrl={meta?.redmineBaseUrl ?? ""} priorityOrder={priorityOrder} />
                   </div>
+                )}
+
+                {tab === "parents" && (
+                  <ParentProgressPanel
+                    issues={issues}
+                    statuses={meta?.statuses ?? []}
+                    trackers={filters.trackers}
+                    redmineBaseUrl={meta?.redmineBaseUrl ?? ""}
+                    projectLabel={selectedProjectLabel}
+                    loadWindow={loadWindow}
+                    onLoadAllTime={() => changeWindow({ kind: "days", days: 0 })}
+                  />
                 )}
 
                 {tab === "aging" && (

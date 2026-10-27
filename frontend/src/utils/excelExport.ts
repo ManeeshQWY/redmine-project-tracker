@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { Issue, TimeEntry, VersionMeta } from "../types/issue";
 import { PerformanceRow } from "./performance";
+import { ParentProgressRow, StatusSeries } from "./parentProgress";
 import {
   aggregateByPriority,
   aggregateByRelease,
@@ -292,4 +293,96 @@ export async function exportPerformanceToExcel(rows: PerformanceRow[], projectNa
   sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: sheet.columns.length } };
 
   await downloadWorkbook(workbook, "redmine_performance", projectName);
+}
+
+/** Parent tickets with their child tickets summarised by status, plus every child listed. */
+export async function exportParentProgressToExcel(
+  rows: ParentProgressRow[],
+  series: StatusSeries[],
+  issueById: Map<number, Issue>,
+  redmineBaseUrl: string,
+  projectName: string
+) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Redmine Project Tracker";
+  workbook.created = new Date();
+
+  // One column per Redmine status (not the chart's folded "Other"), in the chart's order.
+  const statusNames = series.flatMap((s) => s.statuses);
+  const parents = workbook.addWorksheet("Parent Progress");
+  parents.columns = [
+    { header: "Parent ID", key: "id", width: 10 },
+    { header: "Subject", key: "subject", width: 48 },
+    { header: "Tracker", key: "tracker", width: 12 },
+    { header: "Status", key: "status", width: 16 },
+    { header: "Assignee", key: "assignee", width: 20 },
+    { header: "Project", key: "project", width: 22 },
+    { header: "Child Tickets", key: "total", width: 13 },
+    ...statusNames.map((name, i) => ({ header: name, key: `status${i}`, width: Math.max(10, name.length + 2) })),
+    { header: "Closed", key: "closed", width: 9 },
+    { header: "% Closed", key: "closedPercent", width: 10 },
+    { header: "Avg % Done", key: "avgDone", width: 11 },
+    { header: "Estimated Hours", key: "estimated", width: 14 },
+    { header: "Spent Hours", key: "spent", width: 12 },
+  ];
+  for (const r of rows) {
+    const data: Record<string, string | number> = {
+      id: r.id,
+      subject: r.subject,
+      tracker: r.tracker,
+      status: r.status,
+      assignee: r.assignee ?? "",
+      project: r.project,
+      total: r.total,
+      closed: r.closed,
+      closedPercent: r.closedPercent === null ? "" : Math.round(r.closedPercent * 10) / 10,
+      avgDone: r.avgDonePercent === null ? "" : Math.round(r.avgDonePercent * 10) / 10,
+      estimated: r.estimatedHours ?? "",
+      spent: r.spentHours ?? "",
+    };
+    statusNames.forEach((name, i) => {
+      data[`status${i}`] = r.byStatus[name] ?? 0;
+    });
+    const row = parents.addRow(data);
+    row.getCell("id").value = { text: `#${r.id}`, hyperlink: `${redmineBaseUrl}/issues/${r.id}` };
+  }
+  styleHeaderRow(parents);
+  parents.views = [{ state: "frozen", ySplit: 1 }];
+  parents.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: parents.columns.length } };
+
+  const kids = workbook.addWorksheet("Child Tickets");
+  kids.columns = [
+    { header: "Parent ID", key: "parentId", width: 10 },
+    { header: "Parent Subject", key: "parentSubject", width: 40 },
+    { header: "Ticket ID", key: "id", width: 10 },
+    { header: "Subject", key: "subject", width: 48 },
+    { header: "Tracker", key: "tracker", width: 12 },
+    { header: "Status", key: "status", width: 16 },
+    { header: "Closed", key: "closed", width: 9 },
+    { header: "Assignee", key: "assignee", width: 20 },
+    { header: "% Done", key: "done", width: 9 },
+  ];
+  for (const r of rows) {
+    for (const id of r.childIds) {
+      const c = issueById.get(id);
+      if (!c) continue;
+      const row = kids.addRow({
+        parentId: r.id,
+        parentSubject: r.subject,
+        id: c.id,
+        subject: c.subject,
+        tracker: c.tracker,
+        status: c.status,
+        closed: c.statusIsClosed ? "Yes" : "No",
+        assignee: c.assignedTo ?? "",
+        done: c.doneRatio,
+      });
+      row.getCell("id").value = { text: `#${c.id}`, hyperlink: `${redmineBaseUrl}/issues/${c.id}` };
+    }
+  }
+  styleHeaderRow(kids);
+  kids.views = [{ state: "frozen", ySplit: 1 }];
+  kids.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: kids.columns.length } };
+
+  await downloadWorkbook(workbook, "redmine_parent_progress", projectName);
 }

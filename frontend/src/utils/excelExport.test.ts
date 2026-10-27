@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { exportPerformanceToExcel, exportToExcel } from "./excelExport";
+import { exportParentProgressToExcel, exportPerformanceToExcel, exportToExcel } from "./excelExport";
+import { buildParentProgress, buildStatusSeries } from "./parentProgress";
 import { PerformanceRow } from "./performance";
 import { Issue } from "../types/issue";
 
@@ -82,7 +83,7 @@ describe("exportPerformanceToExcel", () => {
   const row: PerformanceRow = {
     key: "42|Dev Dan", name: "Dev Dan", role: "Developer", project: "Alpha", taskId: 42, ancestorIds: [],
     taskSubject: "Login page", tracker: "Story", status: "New", statusIsClosed: false, targetVersion: null,
-    complexity: null, estimation: 8, actuals: 6.5, aiUsage: null, bugsReported: 3, ctBugs: 1,
+    complexity: null, estimation: 8, taskEstimate: 8, actuals: 6.5, aiUsage: null, bugsReported: 3, ctBugs: 1,
   };
 
   it("writes exactly the agreed columns, in order, with the header on row 1", async () => {
@@ -108,5 +109,48 @@ describe("exportPerformanceToExcel", () => {
     expect(r.getCell(8).value).toBe(3);
     expect(r.getCell(9).value).toBe(1);
     expect(r.getCell(10).value ?? "").toBe("");
+  });
+});
+
+describe("exportParentProgressToExcel", () => {
+  const issues = [
+    makeIssue({ id: 1, tracker: "Epic", subject: "Checkout", assignedTo: "Priya", totalEstimatedHours: 40, totalSpentHours: 12 }),
+    makeIssue({ id: 2, parentId: 1, tracker: "Task", subject: "Cart page", status: "Closed", statusIsClosed: true, doneRatio: 100, assignedTo: "Dev Dan" }),
+    makeIssue({ id: 3, parentId: 1, tracker: "Task", subject: "Payment form", status: "In Progress", doneRatio: 40 }),
+  ];
+  const rows = buildParentProgress(issues, "all");
+  const series = buildStatusSeries(["New", "In Progress", "Closed"], ["In Progress", "Closed"]);
+  const byId = new Map(issues.map((i) => [i.id, i]));
+
+  it("writes one row per parent with a column per status, and the % closed", async () => {
+    const wb = await capture(() => exportParentProgressToExcel(rows, series, byId, "https://r.test", "Shop"));
+    const sheet = wb.getWorksheet("Parent Progress")!;
+    const header = (sheet.getRow(1).values as unknown[]).slice(1);
+    expect(header).toEqual([
+      "Parent ID", "Subject", "Tracker", "Status", "Assignee", "Project", "Child Tickets",
+      "In Progress", "Closed", "Closed", "% Closed", "Avg % Done", "Estimated Hours", "Spent Hours",
+    ]);
+    const r = sheet.getRow(2);
+    expect(r.getCell(2).value).toBe("Checkout");
+    expect(r.getCell(7).value).toBe(2); // child tickets
+    expect(r.getCell(8).value).toBe(1); // In Progress
+    expect(r.getCell(9).value).toBe(1); // Closed
+    expect(r.getCell(10).value).toBe(1); // closed count
+    expect(r.getCell(11).value).toBe(50); // % closed
+    expect(r.getCell(12).value).toBe(70); // average % done
+    expect(r.getCell(13).value).toBe(40);
+    expect(r.getCell(14).value).toBe(12);
+  });
+
+  it("lists every child ticket under its parent on a second sheet", async () => {
+    const wb = await capture(() => exportParentProgressToExcel(rows, series, byId, "https://r.test", "Shop"));
+    const sheet = wb.getWorksheet("Child Tickets")!;
+    expect(sheet.rowCount).toBe(3); // header + two children
+    const first = sheet.getRow(2);
+    expect(first.getCell(1).value).toBe(1); // parent id
+    expect(first.getCell(4).value).toBe("Cart page");
+    expect(first.getCell(6).value).toBe("Closed");
+    expect(first.getCell(7).value).toBe("Yes");
+    expect(first.getCell(8).value).toBe("Dev Dan");
   });
 });

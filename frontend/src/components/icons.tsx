@@ -12,6 +12,7 @@ const TAB_PATHS: Record<string, string> = {
   qa: "M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3zM9 12l2 2 4-4",
   time: "M12 13V9M9 3h6",
   performance: "M4 20V8M10 20V4M16 20v-9M22 20V13M2 20h20",
+  parents: "M5 4v16M5 8h6M5 14h6M11 6h8M11 10h8M11 12h8M11 16h8",
   closedTrend: "M3 17l6-6 4 4 8-8M15 6h6v6",
   myAssigned: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 20c0-4 4-6 8-6s8 2 8 6",
 };
