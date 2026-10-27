@@ -560,3 +560,51 @@ describe("bugLinkStats", () => {
     expect(stats.unlinkedBugs).toBe(1);
   });
 });
+
+describe("taskEstimate (the task's own estimate, the same on every row)", () => {
+  it("is Redmine's total for the task, shown on every row whoever it is for", () => {
+    const issues = [
+      issue({ id: 1, tracker: "Epic", assignedTo: "Dev Dan", totalEstimatedHours: 40, estimatedHours: null }),
+      issue({ id: 2, parentId: 1, assignedTo: "Dev Dee", estimatedHours: 25 }),
+    ];
+    const rows = build(issues, [entry({ id: 1, issueId: 1, user: "Quinn QA", hours: 1 })]);
+    // everyone on the Epic sees the same 40 — including the person whose own share is blank
+    expect(rowFor(rows, 1, "Dev Dan")!.taskEstimate).toBe(40);
+    expect(rowFor(rows, 1, "Dev Dee")!.taskEstimate).toBe(40);
+    expect(rowFor(rows, 1, "Quinn QA")!.taskEstimate).toBe(40);
+    // while each person's own share stays their own
+    expect(rowFor(rows, 1, "Dev Dan")!.estimation).toBeNull();
+    expect(rowFor(rows, 1, "Dev Dee")!.estimation).toBe(25);
+  });
+
+  it("is what the ticket shows in Redmine even when the person it is assigned to is a listed QA", () => {
+    // the assignee is a QA by the master list, so their own share comes from "Estimated time for QA"
+    // (blank here) — but the ticket's 8h is still on screen
+    const rows = build([issue({ id: 1, assignedTo: "Quinn QA", estimatedHours: 8, totalEstimatedHours: 8 })]);
+    const row = rowFor(rows, 1, "Quinn QA")!;
+    expect(row.estimation).toBeNull();
+    expect(row.taskEstimate).toBe(8);
+  });
+
+  it("adds up the loaded tickets when Redmine sent no total", () => {
+    const issues = [
+      issue({ id: 1, tracker: "Epic", assignedTo: "Dev Dan", estimatedHours: 5 }),
+      issue({ id: 2, parentId: 1, assignedTo: "Dev Dee", estimatedHours: 3 }),
+      issue({ id: 3, parentId: 1, assignedTo: "Dev Dee", estimatedHours: 2.5 }),
+    ];
+    expect(rowFor(build(issues), 1, "Dev Dan")!.taskEstimate).toBe(10.5);
+  });
+
+  it("is blank when nothing under the task is estimated", () => {
+    expect(rowFor(build([issue({ id: 1, assignedTo: "Dev Dan" })]), 1, "Dev Dan")!.taskEstimate).toBeNull();
+  });
+
+  it("is not added into totals and is sortable", () => {
+    const rows = build([
+      issue({ id: 1, assignedTo: "Dev Dan", estimatedHours: 2, totalEstimatedHours: 2 }),
+      issue({ id: 2, assignedTo: "Dev Dee", estimatedHours: 9, totalEstimatedHours: 9 }),
+    ]);
+    expect(sortPerformanceRows(rows, "taskEstimate", "desc").map((r) => r.taskId)).toEqual([2, 1]);
+    expect(Object.keys(totalsOf(rows))).not.toContain("taskEstimate");
+  });
+});

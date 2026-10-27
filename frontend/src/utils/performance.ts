@@ -92,6 +92,9 @@ export interface PerformanceRow {
   targetVersion: string | null;
   complexity: null; // not supported yet — kept so the column set is stable
   estimation: number | null;
+  /** The task's own estimate as Redmine shows it (its total, children included) — the same on
+   * every row of the task, whoever the row is for. `estimation` is this person's share of it. */
+  taskEstimate: number | null;
   actuals: number;
   aiUsage: null; // not supported yet
   bugsReported: number;
@@ -234,7 +237,13 @@ export function buildPerformanceRows(
       }
     }
 
+    let subtreeEstimate = 0;
+    let anySubtreeEstimate = false;
     for (const k of subtree) {
+      if (k.estimatedHours != null) {
+        subtreeEstimate += k.estimatedHours;
+        anySubtreeEstimate = true;
+      }
       const attached = attachedNames(k);
       for (const name of attached) slot(name).attached = true;
 
@@ -309,6 +318,10 @@ export function buildPerformanceRows(
     };
     walk(task, new Set(attachedNames(task)), new Set(loggersByIssue.get(task.id) ?? []));
 
+    // Redmine's own total (it counts children that may not be loaded); the loaded subtree's sum
+    // when Redmine didn't send one.
+    const taskEstimate = task.totalEstimatedHours ?? (anySubtreeEstimate ? Math.round(subtreeEstimate * 100) / 100 : null);
+
     for (const a of acc.values()) {
       const hasActivity = a.hours > 0 || a.bugIds.size > 0;
       if (rangeActive ? !hasActivity : !(hasActivity || a.attached)) continue;
@@ -326,6 +339,7 @@ export function buildPerformanceRows(
         targetVersion: task.targetVersion,
         complexity: null,
         estimation: a.hasEstimate ? Math.round(a.estimation * 100) / 100 : null,
+        taskEstimate,
         actuals: Math.round(a.hours * 100) / 100,
         aiUsage: null,
         bugsReported: a.bugIds.size,
@@ -515,6 +529,7 @@ export function groupPerformanceRows(rows: PerformanceRow[], keys: GroupKey[], p
 
 export type SortColumn =
   | "name"
+  | "taskEstimate"
   | "role"
   | "project"
   | "task"
@@ -532,6 +547,7 @@ export function sortPerformanceRows(rows: PerformanceRow[], column: SortColumn, 
       case "project": return r.project.toLowerCase();
       case "task": return r.taskId;
       case "estimation": return r.estimation ?? -1;
+      case "taskEstimate": return r.taskEstimate ?? -1;
       case "actuals": return r.actuals;
       case "bugsReported": return r.bugsReported;
       case "ctBugs": return r.ctBugs;

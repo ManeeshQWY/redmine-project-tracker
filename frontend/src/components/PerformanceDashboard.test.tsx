@@ -85,9 +85,9 @@ describe("PerformanceDashboard", () => {
     expect(cells[0]).toBe("Dev Dan");
     expect(cells[1]).toBe("Developer");
     expect(cells[5]).toBe("8");
-    expect(cells[6]).toBe("6");
-    expect(cells[8]).toBe("1");
+    expect(cells[7]).toBe("6");
     expect(cells[9]).toBe("1");
+    expect(cells[10]).toBe("1");
   });
 
   it("adds a filter facet, narrows the rows, and removes it again", async () => {
@@ -204,7 +204,7 @@ describe("PerformanceDashboard", () => {
       expect(r).toBeTruthy();
       return r!;
     });
-    expect(within(dan).getAllByRole("cell")[6].textContent).toBe("6"); // subtotal of Actuals
+    expect(within(dan).getAllByRole("cell")[7].textContent).toBe("6"); // subtotal of Actuals
     expect(screen.queryByRole("link", { name: "#1" })).not.toBeInTheDocument(); // collapsed
 
     fireEvent.click(dan);
@@ -264,7 +264,7 @@ describe("PerformanceDashboard", () => {
     });
     expect(screen.queryByRole("link", { name: "#1" })).not.toBeInTheDocument(); // collapsed
     const dan = bodyRows().find((r) => r.textContent?.includes("Dev Dan"))!;
-    expect(within(dan).getAllByRole("cell")[6].textContent).toBe("6");
+    expect(within(dan).getAllByRole("cell")[7].textContent).toBe("6");
   });
 
   it("shows bugs against a ticket even when nobody is in the master list yet", async () => {
@@ -272,8 +272,8 @@ describe("PerformanceDashboard", () => {
     const row = bodyRows().find((r) => r.textContent?.includes("Dev Dan") && r.textContent?.includes("#1"))!;
     const cells = within(row).getAllByRole("cell").map((c) => c.textContent);
     expect(cells[1]).toBe("Unknown");
-    expect(cells[8]).toBe("1"); // the bug under #1
-    expect(cells[9]).toBe("1"); // and it is a CT bug
+    expect(cells[9]).toBe("1"); // the bug under #1
+    expect(cells[10]).toBe("1"); // and it is a CT bug
   });
 
   it("People multi-select can be searched and 'Select shown' picks just the matches", async () => {
@@ -455,8 +455,8 @@ describe("PerformanceDashboard bugs assigned to a developer", () => {
     await renderLoaded(issues, [entry26367()], { developers: [], qa: [], conflicts: [], error: null });
     const row = bodyRows().find((r) => r.textContent?.includes("Saurav Sajeev"))!;
     const cells = within(row).getAllByRole("cell").map((c) => c.textContent);
-    expect(cells[8]).toBe("1"); // Bugs reported
-    expect(cells[9]).toBe("1"); // CT Bugs
+    expect(cells[9]).toBe("1"); // Bugs reported
+    expect(cells[10]).toBe("1"); // CT Bugs
   });
 });
 
@@ -567,5 +567,30 @@ describe("PerformanceDashboard custom range and cancelling", () => {
 
     await waitFor(() => expect(signals[0].aborted).toBe(true));
     expect(await screen.findByRole("button", { name: /load performance data/i })).toBeEnabled();
+  });
+});
+
+describe("PerformanceDashboard Task est. column", () => {
+  it("shows the ticket's own estimate on every row of the task, next to each person's share", async () => {
+    const issues = [
+      makeIssue({ id: 1, assignedTo: "Dev Dan", estimatedHours: 8, totalEstimatedHours: 12 }),
+    ];
+    const entries = [makeEntry({ id: 1, issueId: 1, user: "Dev Dan", hours: 3 }), makeEntry({ id: 2, issueId: 1, user: "Helper Hal", hours: 1 })];
+    await renderLoaded(issues, entries, MASTER);
+
+    const dan = bodyRows().find((r) => r.textContent?.includes("Dev Dan"))!;
+    const hal = bodyRows().find((r) => r.textContent?.includes("Helper Hal"))!;
+    const danCells = within(dan).getAllByRole("cell").map((c) => c.textContent);
+    const halCells = within(hal).getAllByRole("cell").map((c) => c.textContent);
+    // columns: Name, Role, Project, Task, Complexity, Estimation, Task est., Actuals, AI usage, Bugs, CT
+    expect(danCells[5]).toBe("8"); // Dan's share
+    expect(danCells[6]).toBe("12"); // the ticket's total as Redmine shows it
+    expect(halCells[5]).toBe("—"); // Hal is not assigned anything, so no share…
+    expect(halCells[6]).toBe("12"); // …but the ticket's estimate is still visible
+  });
+
+  it("explains the column in its heading", async () => {
+    await renderLoaded();
+    expect(screen.getByTitle(/the same on every row of the task/i)).toBeInTheDocument();
   });
 });

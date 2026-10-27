@@ -49,13 +49,14 @@ const FACETS: { field: FacetField; label: string; value: (r: PerformanceRow) => 
   { field: "versions", label: "Target Version", value: (r) => r.targetVersion ?? NO_VERSION_LABEL },
 ];
 
-type ColumnId = "name" | "role" | "project" | "task" | "complexity" | "estimation" | "actuals" | "aiUsage" | "bugsReported" | "ctBugs";
+type ColumnId = "name" | "role" | "project" | "task" | "complexity" | "estimation" | "taskEstimate" | "actuals" | "aiUsage" | "bugsReported" | "ctBugs";
 
 interface Column {
   id: ColumnId;
   label: string;
   numeric?: boolean;
   sort?: SortColumn;
+  hint?: string; // shown as a tooltip on the column heading
 }
 
 const COLUMNS: Column[] = [
@@ -64,7 +65,14 @@ const COLUMNS: Column[] = [
   { id: "project", label: "Project", sort: "project" },
   { id: "task", label: "Task", sort: "task" },
   { id: "complexity", label: "Complexity" },
-  { id: "estimation", label: "Estimation (h)", numeric: true, sort: "estimation" },
+  { id: "estimation", label: "Estimation (h)", numeric: true, sort: "estimation", hint: "This person's share of the task's estimate" },
+  {
+    id: "taskEstimate",
+    label: "Task est. (h)",
+    numeric: true,
+    sort: "taskEstimate",
+    hint: "The task's own estimate as Redmine shows it (children included) — the same on every row of the task",
+  },
   { id: "actuals", label: "Actuals (h)", numeric: true, sort: "actuals" },
   { id: "aiUsage", label: "AI usage" },
   { id: "bugsReported", label: "Bugs reported", numeric: true, sort: "bugsReported" },
@@ -484,6 +492,7 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
       case "complexity": return <span className="text-slate-300 dark:text-slate-600">—</span>;
       case "aiUsage": return <span className="text-slate-300 dark:text-slate-600">—</span>;
       case "estimation": return r.estimation === null ? <span className="text-slate-300 dark:text-slate-600">—</span> : formatHours(r.estimation);
+      case "taskEstimate": return r.taskEstimate === null ? <span className="text-slate-300 dark:text-slate-600">—</span> : formatHours(r.taskEstimate);
       case "actuals": return formatHours(r.actuals) || "0";
       case "bugsReported": return r.bugsReported;
       case "ctBugs": return r.ctBugs;
@@ -733,7 +742,7 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
             <thead className="sticky top-0 z-[1] bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               <tr>
                 {visibleColumns.map((c) => (
-                  <th key={c.id} className={`px-2 py-1.5 ${c.numeric ? "text-right" : ""}`}>
+                  <th key={c.id} className={`px-2 py-1.5 ${c.numeric ? "text-right" : ""}`} title={c.hint}>
                     {c.sort ? (
                       <button onClick={() => toggleSort(c.sort!)} className="font-semibold hover:text-slate-800 dark:hover:text-slate-100">
                         {c.label}
@@ -804,6 +813,12 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
             <span className="font-medium">Estimation</span>: of the people on a ticket, Developers (per the list) share its estimated
             hours equally and QA share &ldquo;Estimated time for QA&rdquo;. Until a ticket has a listed Developer, its Assignee and
             Additional Assignees share the estimate instead (their role still shows Unknown). A dash means nothing was estimated.
+          </li>
+          <li>
+            <span className="font-medium">Task est.</span> is the task&apos;s own estimate exactly as Redmine shows it, children included. It is
+            the same on every row of a task, so it is always there to compare with each person&apos;s share in <span className="font-medium">Estimation</span> —
+            which is blank for someone who is not assigned any ticket under the task, or whose ticket has no estimate for their role. It is
+            not added up in totals, and not in the export.
           </li>
           <li>
             <span className="font-medium">Actuals</span> are the hours that person logged on the task and its child tickets.
