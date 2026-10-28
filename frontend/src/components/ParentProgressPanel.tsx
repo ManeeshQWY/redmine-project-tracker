@@ -8,6 +8,7 @@ import {
   buildParentProgress,
   buildStatusSeries,
   ChildScope,
+  childHours,
   filterParentProgress,
   ParentProgressRow,
   ParentSort,
@@ -109,7 +110,7 @@ export default function ParentProgressPanel({ issues, statuses, trackers, redmin
   async function handleExport() {
     setExporting(true);
     try {
-      await exportParentProgressToExcel(rows, series, issueById, redmineBaseUrl, projectLabel);
+      await exportParentProgressToExcel(rows, series, issueById, redmineBaseUrl, projectLabel, scope);
     } finally {
       setExporting(false);
     }
@@ -241,6 +242,7 @@ export default function ParentProgressPanel({ issues, statuses, trackers, redmin
                     isDark={isDark}
                     redmineBaseUrl={redmineBaseUrl}
                     issueById={issueById}
+                    scope={scope}
                   />
                 );
               })}
@@ -267,6 +269,7 @@ function ParentRows({
   isDark,
   redmineBaseUrl,
   issueById,
+  scope,
 }: {
   row: ParentProgressRow;
   open: boolean;
@@ -275,7 +278,9 @@ function ParentRows({
   isDark: boolean;
   redmineBaseUrl: string;
   issueById: Map<number, Issue>;
+  scope: ChildScope;
 }) {
+  const hours = (h: number | null) => (h === null ? <span className="text-slate-300 dark:text-slate-600">—</span> : formatHours(h));
   const link = (id: number) =>
     redmineBaseUrl ? (
       <a href={`${redmineBaseUrl}/issues/${id}`} target="_blank" rel="noreferrer" className="font-medium text-brand-600 hover:underline dark:text-brand-400" onClick={(e) => e.stopPropagation()}>
@@ -328,10 +333,14 @@ function ParentRows({
                   <th className="px-2 py-1">Status</th>
                   <th className="px-2 py-1">Assignee</th>
                   <th className="px-2 py-1 text-right">% done</th>
+                  <th className="px-2 py-1 text-right" title={scope === "all" ? "The ticket's own estimate" : "Redmine's total for the ticket, including its own children"}>Est. (h)</th>
+                  <th className="px-2 py-1 text-right" title={scope === "all" ? "Time logged on the ticket itself" : "Redmine's total time for the ticket, including its own children"}>Spent (h)</th>
                 </tr>
               </thead>
               <tbody>
-                {children.slice(0, MAX_CHILDREN_SHOWN).map((c) => (
+                {children.slice(0, MAX_CHILDREN_SHOWN).map((c) => {
+                  const h = childHours(c, scope);
+                  return (
                   <tr key={c.id} className="border-t border-slate-100 dark:border-slate-800">
                     <td className="px-2 py-1">
                       {link(c.id)} {c.subject}
@@ -340,11 +349,14 @@ function ParentRows({
                     <td className="px-2 py-1">{c.status}</td>
                     <td className="px-2 py-1">{c.assignedTo ?? "—"}</td>
                     <td className="px-2 py-1 text-right tabular-nums">{c.doneRatio}%</td>
+                    <td className="px-2 py-1 text-right tabular-nums">{hours(h.estimated)}</td>
+                    <td className="px-2 py-1 text-right tabular-nums">{hours(h.spent)}</td>
                   </tr>
-                ))}
+                  );
+                })}
                 {children.length > MAX_CHILDREN_SHOWN && (
                   <tr>
-                    <td colSpan={5} className="px-2 py-1 text-center text-slate-400 dark:text-slate-500">
+                    <td colSpan={7} className="px-2 py-1 text-center text-slate-400 dark:text-slate-500">
                       Showing the first {MAX_CHILDREN_SHOWN} of {children.length} child tickets — export to see all.
                     </td>
                   </tr>

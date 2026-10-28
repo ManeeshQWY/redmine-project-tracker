@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { Issue, TimeEntry, VersionMeta } from "../types/issue";
 import { PerformanceRow } from "./performance";
-import { ParentProgressRow, StatusSeries } from "./parentProgress";
+import { ChildScope, childHours, ParentProgressRow, StatusSeries } from "./parentProgress";
 import {
   aggregateByPriority,
   aggregateByRelease,
@@ -301,7 +301,8 @@ export async function exportParentProgressToExcel(
   series: StatusSeries[],
   issueById: Map<number, Issue>,
   redmineBaseUrl: string,
-  projectName: string
+  projectName: string,
+  scope: ChildScope = "all"
 ) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Redmine Project Tracker";
@@ -361,11 +362,14 @@ export async function exportParentProgressToExcel(
     { header: "Closed", key: "closed", width: 9 },
     { header: "Assignee", key: "assignee", width: 20 },
     { header: "% Done", key: "done", width: 9 },
+    { header: "Estimated Hours", key: "estimated", width: 14 },
+    { header: "Spent Hours", key: "spent", width: 12 },
   ];
   for (const r of rows) {
     for (const id of r.childIds) {
       const c = issueById.get(id);
       if (!c) continue;
+      const hours = childHours(c, scope);
       const row = kids.addRow({
         parentId: r.id,
         parentSubject: r.subject,
@@ -376,6 +380,8 @@ export async function exportParentProgressToExcel(
         closed: c.statusIsClosed ? "Yes" : "No",
         assignee: c.assignedTo ?? "",
         done: c.doneRatio,
+        estimated: hours.estimated ?? "",
+        spent: hours.spent ?? "",
       });
       row.getCell("id").value = { text: `#${c.id}`, hyperlink: `${redmineBaseUrl}/issues/${c.id}` };
     }

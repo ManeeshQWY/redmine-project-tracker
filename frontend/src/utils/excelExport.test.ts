@@ -153,4 +153,29 @@ describe("exportParentProgressToExcel", () => {
     expect(first.getCell(7).value).toBe("Yes");
     expect(first.getCell(8).value).toBe("Dev Dan");
   });
+
+  it("gives each child ticket its estimate and time spent, blank when there is none", async () => {
+    const withHours = [
+      makeIssue({ id: 1, tracker: "Epic", subject: "Big" }),
+      makeIssue({ id: 2, parentId: 1, subject: "Mid", estimatedHours: 1, spentHours: 0.5, totalEstimatedHours: 9, totalSpentHours: 4 }),
+      makeIssue({ id: 3, parentId: 2, subject: "Leaf", estimatedHours: 8, spentHours: 3.5, totalEstimatedHours: 8, totalSpentHours: 3.5 }),
+      makeIssue({ id: 4, parentId: 1, subject: "Bare" }),
+    ];
+    const map = new Map(withHours.map((i) => [i.id, i]));
+    const parentRows = buildParentProgress(withHours, "all").filter((r) => r.id === 1);
+    const all = await capture(() => exportParentProgressToExcel(parentRows, series, map, "https://r.test", "Shop", "all"));
+    const sheet = all.getWorksheet("Child Tickets")!;
+    const header = (sheet.getRow(1).values as unknown[]).slice(1);
+    expect(header.slice(-2)).toEqual(["Estimated Hours", "Spent Hours"]);
+    const byName = (name: string) => sheet.getRows(2, sheet.rowCount - 1)!.find((r) => r.getCell(4).value === name)!;
+    expect([byName("Leaf").getCell(10).value, byName("Leaf").getCell(11).value]).toEqual([8, 3.5]);
+    expect([byName("Mid").getCell(10).value, byName("Mid").getCell(11).value]).toEqual([1, 0.5]); // own hours: rows add up to the parent
+    expect([byName("Bare").getCell(10).value ?? "", byName("Bare").getCell(11).value ?? ""]).toEqual(["", ""]);
+
+    const direct = await capture(() =>
+      exportParentProgressToExcel(buildParentProgress(withHours, "direct").filter((r) => r.id === 1), series, map, "https://r.test", "Shop", "direct")
+    );
+    const mid = direct.getWorksheet("Child Tickets")!.getRows(2, 2)!.find((r) => r.getCell(4).value === "Mid")!;
+    expect([mid.getCell(10).value, mid.getCell(11).value]).toEqual([9, 4]); // Redmine's total for a child with children
+  });
 });

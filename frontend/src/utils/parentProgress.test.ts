@@ -3,6 +3,7 @@ import { Issue } from "../types/issue";
 import {
   buildParentProgress,
   buildStatusSeries,
+  childHours,
   filterParentProgress,
   MAX_STATUS_SLOTS,
   ParentFilters,
@@ -190,5 +191,22 @@ describe("status series (chart colours)", () => {
     const counts = seriesCounts(rows[0], buildStatusSeries(names, names));
     expect(counts.s0).toBe(1);
     expect(counts.other).toBe(2);
+  });
+});
+
+describe("childHours", () => {
+  const child = issue({ id: 2, estimatedHours: 3, spentHours: 1, totalEstimatedHours: 10, totalSpentHours: 6 });
+
+  it("shows a ticket's own hours when every descendant is listed, so the rows add up", () => {
+    expect(childHours(child, "all")).toEqual({ estimated: 3, spent: 1 });
+  });
+
+  it("shows Redmine's total for the ticket when only direct children are listed", () => {
+    expect(childHours(child, "direct")).toEqual({ estimated: 10, spent: 6 });
+  });
+
+  it("falls back to the ticket's own hours without a total, and is blank without either", () => {
+    expect(childHours(issue({ id: 3, estimatedHours: 4, spentHours: 2 }), "direct")).toEqual({ estimated: 4, spent: 2 });
+    expect(childHours(issue({ id: 4 }), "all")).toEqual({ estimated: null, spent: null });
   });
 });

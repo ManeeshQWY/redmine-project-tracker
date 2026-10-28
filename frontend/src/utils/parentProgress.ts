@@ -94,6 +94,22 @@ export function buildParentProgress(issues: Issue[], scope: ChildScope = "all"):
   return rows;
 }
 
+/**
+ * Estimate and time spent to show beside a child ticket. When every descendant is listed
+ * ("all") each ticket shows only its own hours, so the rows add up to the parent's figure;
+ * when only direct children are listed, a child that has children of its own shows Redmine's
+ * total for it, so its subtree is not left out.
+ */
+export function childHours(child: Issue, scope: ChildScope): { estimated: number | null; spent: number | null } {
+  if (scope === "direct") {
+    return {
+      estimated: child.totalEstimatedHours ?? child.estimatedHours ?? null,
+      spent: child.totalSpentHours ?? child.spentHours ?? null,
+    };
+  }
+  return { estimated: child.estimatedHours ?? null, spent: child.spentHours ?? null };
+}
+
 export type ParentSort = "total" | "open" | "lowestComplete" | "highestComplete";
 
 export function sortParentProgress(rows: ParentProgressRow[], sort: ParentSort): ParentProgressRow[] {

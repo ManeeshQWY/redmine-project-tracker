@@ -195,3 +195,43 @@ describe("ParentProgressPanel and the loaded period", () => {
     expect(screen.queryByRole("button", { name: "Load all time" })).not.toBeInTheDocument();
   });
 });
+
+describe("ParentProgressPanel child ticket hours", () => {
+  const hoursIssues = [
+    issue({ id: 1, tracker: "Epic", subject: "Big" }),
+    issue({ id: 2, parentId: 1, tracker: "Feature", subject: "Mid", estimatedHours: 1, spentHours: 0.5, totalEstimatedHours: 9, totalSpentHours: 4 }),
+    issue({ id: 3, parentId: 2, subject: "Leaf", estimatedHours: 8, spentHours: 3.5, totalEstimatedHours: 8, totalSpentHours: 3.5 }),
+    issue({ id: 4, parentId: 1, subject: "Unestimated" }),
+  ];
+  const childRow = (name: string) =>
+    within(parentRows().find((r) => r.textContent?.includes("Big"))!.nextElementSibling as HTMLElement)
+      .getAllByRole("row")
+      .find((r) => r.textContent?.includes(name))!;
+  const cellsOf = (name: string) => within(childRow(name)).getAllByRole("cell").map((c) => c.textContent);
+
+  it("lists each child's estimate and time spent, blank when there is none", () => {
+    renderPanel({ issues: hoursIssues });
+    fireEvent.click(parentRows().find((r) => r.textContent?.includes("Big"))!);
+    // columns: Ticket, Tracker, Status, Assignee, % done, Est. (h), Spent (h)
+    expect(cellsOf("Leaf").slice(5)).toEqual(["8", "3.50"]);
+    expect(cellsOf("Unestimated").slice(5)).toEqual(["—", "—"]);
+    // every descendant is listed, so the Feature shows only its own hours
+    expect(cellsOf("Mid").slice(5)).toEqual(["1", "0.50"]);
+  });
+
+  it("shows a child's Redmine total when only direct children are counted", () => {
+    renderPanel({ issues: hoursIssues });
+    fireEvent.change(screen.getByLabelText("Count"), { target: { value: "direct" } });
+    fireEvent.click(parentRows().find((r) => r.textContent?.includes("Big"))!);
+    expect(cellsOf("Mid").slice(5)).toEqual(["9", "4"]);
+  });
+
+  it("passes the count mode to the export", async () => {
+    const exporter = vi.spyOn(excelExport, "exportParentProgressToExcel").mockResolvedValue();
+    renderPanel({ issues: hoursIssues });
+    fireEvent.change(screen.getByLabelText("Count"), { target: { value: "direct" } });
+    fireEvent.click(screen.getByRole("button", { name: /export to excel/i }));
+    await waitFor(() => expect(exporter).toHaveBeenCalledTimes(1));
+    expect(exporter.mock.calls[0][5]).toBe("direct");
+  });
+});
