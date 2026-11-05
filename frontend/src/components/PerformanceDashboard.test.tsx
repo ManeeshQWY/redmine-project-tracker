@@ -52,10 +52,10 @@ async function renderLoaded(
     <PerformanceDashboard projectIdentifier="alpha" projectLabel="Alpha" redmineBaseUrl="https://r.test" issues={issues} trackers={trackers} onSessionExpired={() => {}} />
   );
   fireEvent.click(screen.getByRole("button", { name: /load performance data/i }));
-  await waitFor(() => expect(screen.getByRole("table")).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByRole("table", { name: "Performance by task" })).toBeInTheDocument());
 }
 
-const dataTable = () => screen.getByRole("table");
+const dataTable = () => screen.getByRole("table", { name: "Performance by task" });
 const apply = () => fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 const openPeople = () => fireEvent.click(screen.getByRole("button", { name: /all people|selected/i }));
 // tbody rows only — the header and the totals footer are rows too.
@@ -592,5 +592,64 @@ describe("PerformanceDashboard Task est. column", () => {
   it("explains the column in its heading", async () => {
     await renderLoaded();
     expect(screen.getByTitle(/the same on every row of the task/i)).toBeInTheDocument();
+  });
+});
+
+describe("PerformanceDashboard current tickets per person", () => {
+  const workloadTable = () => screen.getByRole("table", { name: "Current tickets per person" });
+  // the cells of a person's line (its first cell may start with the expand arrow)
+  const cellsOf = (name: string) =>
+    within(workloadTable()).getAllByRole("row").find((r) => r.querySelector("td")?.textContent?.replace(/^[▸▾]/, "") === name)!.querySelectorAll("td");
+
+  const issues = [
+    makeIssue({ id: 1, subject: "Login page", assignedTo: "Dev Dan", status: "In Progress" }),
+    makeIssue({ id: 2, subject: "Crash on save", tracker: "Bug", assignedTo: "Dev Dan", status: "New" }),
+    makeIssue({ id: 3, subject: "Old work", assignedTo: "Dev Dan", status: "Closed", statusIsClosed: true }),
+    makeIssue({ id: 4, subject: "Reports", assignedTo: "Dev Dee", additionalAssignees: [{ id: 9, name: "Dev Dan" }] }),
+  ];
+
+  it("shows each person's open tickets, bugs and statuses, and lists people with none as zero", async () => {
+    await renderLoaded(issues, [], { ...MASTER, developers: [...MASTER.developers, "Dev Free"] });
+
+    const dan = cellsOf("Dev Dan");
+    expect(dan[1].textContent).toBe("Developer");
+    expect(dan[2].textContent).toBe("3"); // #1, #2 and #4 — the closed #3 is not counted
+    expect(dan[3].textContent).toBe("1"); // the bug
+    expect(dan[4].textContent).toBe("New 2 · In Progress 1"); // most first
+    expect(cellsOf("Dev Free")[2].textContent).toBe("0");
+    expect(cellsOf("Quinn QA")[2].textContent).toBe("0");
+  });
+
+  it("lists a person's tickets when their line is opened", async () => {
+    await renderLoaded(issues);
+    expect(within(workloadTable()).queryByText(/Crash on save/)).not.toBeInTheDocument();
+    fireEvent.click(within(workloadTable()).getByText("Dev Dan"));
+    expect(within(workloadTable()).getByText(/Crash on save/)).toBeInTheDocument();
+    expect(within(workloadTable()).queryByText(/Old work/)).not.toBeInTheDocument(); // closed
+    expect(within(workloadTable()).getByRole("link", { name: "#2" })).toHaveAttribute("href", "https://r.test/issues/2");
+  });
+
+  it("follows the applied filters", async () => {
+    await renderLoaded(issues);
+    fireEvent.change(screen.getByLabelText("Add filter"), { target: { value: "statuses" } });
+    fireEvent.change(screen.getByLabelText("Filter value"), { target: { value: "New" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    apply();
+    await waitFor(() => expect(cellsOf("Dev Dan")[2].textContent).toBe("2")); // #2 and #4 are New; #1 (In Progress) drops out
+  });
+
+  it("offers to load all time when only a recent period is loaded", async () => {
+    vi.spyOn(api, "getTimeEntries").mockResolvedValue({ timeEntries: [], totalCount: 0, durationMs: 1, fetchedAt: "2026-03-20T00:00:00Z" });
+    vi.spyOn(api, "getUserRoles").mockResolvedValue(MASTER);
+    const onLoadAllTime = vi.fn();
+    render(
+      <PerformanceDashboard projectIdentifier="alpha" projectLabel="Alpha" redmineBaseUrl="https://r.test" issues={issues}
+        loadWindow={{ kind: "days", days: 30 }} onLoadAllTime={onLoadAllTime} onSessionExpired={() => {}} />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /load performance data/i }));
+    await waitFor(() => expect(workloadTable()).toBeInTheDocument());
+    expect(screen.getByText(/can be understated/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Load all time" }));
+    expect(onLoadAllTime).toHaveBeenCalledTimes(1);
   });
 });

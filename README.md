@@ -267,6 +267,12 @@ change it. Anyone not listed shows as **Unknown** (the tab lists them so they ca
 a name under both roles is flagged as a conflict and also treated as Unknown. No database is
 involved.
 
+The same tab has a **Current tickets per person** table above the main one: for each person, the open
+tickets (any type, not in a closed status) they are on as Assignee, Additional Assignee or Assigned QA,
+with the bugs among them and a count per status; click a person to list the tickets. People in the master
+list with none show as 0. It follows the tab's filters, only counts tickets in the loaded period (use
+**Load all time** for the full picture), and is not part of the Excel export.
+
 ## Known limitations
 
 - Sessions and the issue/meta caches are in-memory only — a backend restart logs

@@ -463,6 +463,7 @@ export default function App() {
                     issues={issues}
                     trackers={filters.trackers}
                     loadWindow={loadWindow}
+                    onLoadAllTime={() => changeWindow({ kind: "days", days: 0 })}
                     onSessionExpired={() => setUser(null)}
                   />
                 )}

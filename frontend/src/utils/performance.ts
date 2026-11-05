@@ -14,7 +14,7 @@ export type PerformanceRole = "Developer" | "QA" | "Unknown";
 /** Normalised-name -> role. Names are compared ignoring case and surrounding spaces. */
 export type RoleLookup = Map<string, "Developer" | "QA">;
 
-function normalizeName(name: string): string {
+export function normalizeName(name: string): string {
   return name.trim().toLowerCase();
 }
 
@@ -126,7 +126,7 @@ function inRange(date: string | null | undefined, range: DateRange): boolean {
 
 /** Everyone attached to a ticket through Assignee, Additional Assignee or Assigned QA —
  * deliberately without saying in what capacity. */
-function attachedNames(issue: Issue): string[] {
+export function attachedNames(issue: Issue): string[] {
   const names = new Set<string>();
   if (issue.assignedTo) names.add(issue.assignedTo);
   for (const a of issue.additionalAssignees ?? []) names.add(a.name);

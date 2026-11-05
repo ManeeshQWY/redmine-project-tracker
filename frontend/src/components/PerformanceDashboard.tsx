@@ -1,4 +1,5 @@
 import { Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import CurrentWorkloadPanel from "./CurrentWorkloadPanel";
 import { ApiError, getTimeEntries, getUserRoles, isAbortError } from "../services/api";
 import { Issue, TimeEntry, UserRolesResult } from "../types/issue";
 import { DEFAULT_WINDOW, LoadWindow, windowKey, windowPhrase } from "../utils/dataWindow";
@@ -23,6 +24,7 @@ import {
   sortPerformanceRows,
   totalsOf,
 } from "../utils/performance";
+import { buildWorkload } from "../utils/workload";
 
 interface Props {
   projectIdentifier: string;
@@ -35,6 +37,7 @@ interface Props {
   // Bug tasks); consolidation still reads every ticket so a parent's totals stay whole.
   trackers?: string[];
   loadWindow?: LoadWindow; // the period tickets are updated in / time is logged in
+  onLoadAllTime?: () => void; // offered beside the current-tickets table when only a recent period is loaded
   onSessionExpired: () => void;
 }
 
@@ -264,7 +267,7 @@ function allGroupIds(groups: PerformanceGroup[]): string[] {
   return groups.flatMap((g) => [g.id, ...allGroupIds(g.children)]);
 }
 
-export default function PerformanceDashboard({ projectIdentifier, projectLabel, redmineBaseUrl, issues, trackers = [], loadWindow = DEFAULT_WINDOW, onSessionExpired }: Props) {
+export default function PerformanceDashboard({ projectIdentifier, projectLabel, redmineBaseUrl, issues, trackers = [], loadWindow = DEFAULT_WINDOW, onLoadAllTime, onSessionExpired }: Props) {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -323,6 +326,18 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
     [allRows, trackers]
   );
   const filteredRows = useMemo(() => filterPerformanceRows(scopedRows, applied.filters), [scopedRows, applied.filters]);
+  // Open tickets per person. Everyone the report knows is listed, so people with none show as 0.
+  const workload = useMemo(
+    () =>
+      buildWorkload(
+        issues,
+        roleLookup,
+        applied.filters,
+        trackers,
+        [...(roles?.developers ?? []), ...(roles?.qa ?? []), ...allRows.map((r) => r.name)]
+      ),
+    [issues, roleLookup, applied.filters, trackers, roles, allRows]
+  );
   const linkStats = useMemo(() => bugLinkStats(issues), [issues]);
   const sortedRows = useMemo(() => sortPerformanceRows(filteredRows, sort.column, sort.direction), [filteredRows, sort]);
   const activeGroupKeys = useMemo(() => groupBy.filter((g): g is GroupKey => g !== ""), [groupBy]);
@@ -736,9 +751,11 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
 
       {roles && <RoleListNotices roles={roles} unknownNames={unknownNames} />}
 
+      <CurrentWorkloadPanel rows={workload} redmineBaseUrl={redmineBaseUrl} loadWindow={loadWindow} onLoadAllTime={onLoadAllTime} />
+
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="max-h-[640px] overflow-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs" aria-label="Performance by task">
             <thead className="sticky top-0 z-[1] bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               <tr>
                 {visibleColumns.map((c) => (
@@ -828,6 +845,11 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
             them plus Bug tickets raised against a ticket they are on; for QA, Bug tickets they raised against a ticket they are
             working on (named on it or has logged time on it). Bugs with status &ldquo;Not a bug&rdquo; are never counted. <span className="font-medium">CT Bugs</span> are those with Testing Type = CT. Only bugs
             linked by parent/child are counted.
+          </li>
+          <li>
+            <span className="font-medium">Current tickets per person</span> counts the open tickets (any type, not in a closed status) a
+            person is on as Assignee, Additional Assignee or Assigned QA, and lists people with none as 0. It follows the Name, Role,
+            Project, Tracker, Status, Target Version and Search filters, ignores the open/closed filter and the activity dates, and is not in the export.
           </li>
           <li>
             <span className="font-medium">Totals and group subtotals</span> count each hour and bug once per person: when a task and
