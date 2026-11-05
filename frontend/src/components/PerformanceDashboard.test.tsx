@@ -609,7 +609,13 @@ describe("PerformanceDashboard current tickets per person", () => {
   ];
 
   it("shows each person's open tickets, bugs and statuses, and lists people with none as zero", async () => {
-    await renderLoaded(issues, [], { ...MASTER, developers: [...MASTER.developers, "Dev Free"] });
+    // Dev Free is on a closed ticket only, so is in the project with nothing open; Dev Outsider is in the
+    // master list but nowhere in this project's data, so is not listed
+    await renderLoaded(
+      [...issues, makeIssue({ id: 5, assignedTo: "Dev Free", status: "Closed", statusIsClosed: true })],
+      [],
+      { ...MASTER, developers: [...MASTER.developers, "Dev Free", "Dev Outsider"] }
+    );
 
     const dan = cellsOf("Dev Dan");
     expect(dan[1].textContent).toBe("Developer");
@@ -617,7 +623,8 @@ describe("PerformanceDashboard current tickets per person", () => {
     expect(dan[3].textContent).toBe("1"); // the bug
     expect(dan[4].textContent).toBe("New 2 · In Progress 1"); // most first
     expect(cellsOf("Dev Free")[2].textContent).toBe("0");
-    expect(cellsOf("Quinn QA")[2].textContent).toBe("0");
+    expect(within(workloadTable()).queryByText("Dev Outsider")).not.toBeInTheDocument();
+    expect(within(workloadTable()).queryByText("Quinn QA")).not.toBeInTheDocument(); // in the master list, not in these tickets
   });
 
   it("lists a person's tickets when their line is opened", async () => {

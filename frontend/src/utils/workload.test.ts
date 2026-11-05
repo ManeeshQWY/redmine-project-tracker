@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Issue } from "../types/issue";
 import { buildRoleLookup, EMPTY_PERFORMANCE_FILTERS, PerformanceFilters } from "./performance";
-import { buildWorkload, summarizeWorkload } from "./workload";
+import { buildWorkload, projectPeople, summarizeWorkload } from "./workload";
 
 function issue(overrides: Partial<Issue> & { id: number }): Issue {
   return {
@@ -123,5 +123,22 @@ describe("summarizeWorkload", () => {
       issue({ id: 2, assignedTo: "Dev Dan" }),
     ]);
     expect(summarizeWorkload(rows)).toEqual({ people: 2, tickets: 2, bugs: 1 });
+  });
+});
+
+describe("projectPeople", () => {
+  it("is everyone on a ticket, open or closed, or who logged time — each once", () => {
+    const people = projectPeople(
+      [
+        issue({ id: 1, assignedTo: "Dev Dan", additionalAssignees: [{ id: 2, name: "Dev Dee" }] }),
+        issue({ id: 2, assignedTo: "dev dan", status: "Closed", statusIsClosed: true, assignedQAs: [{ id: 3, name: "Quinn QA" }] }),
+      ],
+      [{ id: 1, project: "Alpha", issueId: 1, user: "Logger Lee", activity: "Dev", hours: 1, comments: null, spentOn: "2026-03-10" }]
+    );
+    expect(people.sort()).toEqual(["Dev Dan", "Dev Dee", "Logger Lee", "Quinn QA"]);
+  });
+
+  it("does not include anyone just because they are in the master list or authored a ticket", () => {
+    expect(projectPeople([issue({ id: 1, author: "Some Customer" })], [])).toEqual([]);
   });
 });

@@ -269,8 +269,8 @@ involved.
 
 The same tab has a **Current tickets per person** table above the main one: for each person, the open
 tickets (any type, not in a closed status) they are on as Assignee, Additional Assignee or Assigned QA,
-with the bugs among them and a count per status; click a person to list the tickets. People in the master
-list with none show as 0. It follows the tab's filters, only counts tickets in the loaded period (use
+with the bugs among them and a count per status; click a person to list the tickets. People in the selected
+project (on one of its tickets or with time logged) who have none show as 0. It follows the tab's filters, only counts tickets in the loaded period (use
 **Load all time** for the full picture), and is not part of the Excel export.
 
 ## Known limitations

@@ -1,4 +1,4 @@
-import { Issue } from "../types/issue";
+import { Issue, TimeEntry } from "../types/issue";
 import { attachedNames, NO_VERSION_LABEL, normalizeName, PerformanceFilters, PerformanceRole, RoleLookup } from "./performance";
 
 // How many tickets each person has open right now, whatever the ticket type — a separate
@@ -28,8 +28,8 @@ const isBug = (issue: Issue) => issue.tracker.trim().toLowerCase() === "bug";
  * Additional Assignee or Assigned QA — the same fields the rest of this report uses to say
  * who is on a ticket, without deciding in what capacity.
  *
- * `knownPeople` (the master list and everyone else the report knows) are listed even with no
- * open tickets, so it is clear who is free. The Performance filters narrow it: Name and Role
+ * `knownPeople` (see `projectPeople`) are listed even with no open tickets, so it is clear who
+ * is free. The Performance filters narrow it: Name and Role
  * choose the people; Project, Tracker (including the app-wide `chipTrackers`), Status, Target
  * Version and Search choose which tickets count. The open/closed filter is ignored — this
  * view is open tickets by definition.
@@ -97,6 +97,22 @@ export function buildWorkload(
     rows.push({ name, role: roleOf(name), open: sorted.length, bugs: sorted.filter(isBug).length, byStatus, tickets: sorted });
   }
   return rows.sort((a, b) => b.open - a.open || a.name.localeCompare(b.name));
+}
+
+/**
+ * The people who belong to the loaded data: anyone on a ticket (open or closed) or who has
+ * logged time. Redmine's own member list isn't read, so this is "has taken part", and the
+ * master list is deliberately not added — it covers everyone, not just this project.
+ */
+export function projectPeople(issues: Issue[], timeEntries: TimeEntry[]): string[] {
+  const names = new Map<string, string>();
+  const add = (name: string) => {
+    const key = normalizeName(name);
+    if (key && !names.has(key)) names.set(key, name);
+  };
+  for (const issue of issues) attachedNames(issue).forEach(add);
+  for (const entry of timeEntries) add(entry.user);
+  return [...names.values()];
 }
 
 export function summarizeWorkload(rows: WorkloadRow[]): WorkloadSummary {

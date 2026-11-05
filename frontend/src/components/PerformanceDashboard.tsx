@@ -24,7 +24,7 @@ import {
   sortPerformanceRows,
   totalsOf,
 } from "../utils/performance";
-import { buildWorkload } from "../utils/workload";
+import { buildWorkload, projectPeople } from "../utils/workload";
 
 interface Props {
   projectIdentifier: string;
@@ -326,7 +326,8 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
     [allRows, trackers]
   );
   const filteredRows = useMemo(() => filterPerformanceRows(scopedRows, applied.filters), [scopedRows, applied.filters]);
-  // Open tickets per person. Everyone the report knows is listed, so people with none show as 0.
+  // Open tickets per person. Everyone who has taken part in this project's data is listed, so
+  // people with none show as 0 — the master list as a whole is not, it spans every project.
   const workload = useMemo(
     () =>
       buildWorkload(
@@ -334,9 +335,9 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
         roleLookup,
         applied.filters,
         trackers,
-        [...(roles?.developers ?? []), ...(roles?.qa ?? []), ...allRows.map((r) => r.name)]
+        [...projectPeople(issues, timeEntries ?? []), ...allRows.map((r) => r.name)]
       ),
-    [issues, roleLookup, applied.filters, trackers, roles, allRows]
+    [issues, timeEntries, roleLookup, applied.filters, trackers, allRows]
   );
   const linkStats = useMemo(() => bugLinkStats(issues), [issues]);
   const sortedRows = useMemo(() => sortPerformanceRows(filteredRows, sort.column, sort.direction), [filteredRows, sort]);
@@ -848,7 +849,7 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
           </li>
           <li>
             <span className="font-medium">Current tickets per person</span> counts the open tickets (any type, not in a closed status) a
-            person is on as Assignee, Additional Assignee or Assigned QA, and lists people with none as 0. It follows the Name, Role,
+            person is on as Assignee, Additional Assignee or Assigned QA, and lists people in this project with none as 0 (anyone on one of its tickets or with time logged). It follows the Name, Role,
             Project, Tracker, Status, Target Version and Search filters, ignores the open/closed filter and the activity dates, and is not in the export.
           </li>
           <li>
