@@ -1,4 +1,5 @@
 import { Issue } from "../types/issue";
+import { isDelivered, isOpenWork, stageOf } from "./stages";
 
 // Progress of a parent ticket (Epic, Feature, …) through the tickets nested under it:
 // how many there are, what status they are in, and how much is finished.
@@ -24,6 +25,13 @@ export interface ParentProgressRow {
   closedPercent: number | null;
   /** Mean of the children's own "% done" (0–100). */
   avgDonePercent: number | null;
+  /** Share of the leaf tickets under this parent (at any depth, dropped ones left out) that are delivered —
+   * "closed", or "Dev Completed" and later when `devDoneCounts` is on. 0–100; null with none. */
+  deliveredPercent: number | null;
+  /** Hours still to do on the open leaf tickets under it: estimate minus logged, never below zero. */
+  hoursLeft: number;
+  /** Open leaf tickets under it with no estimate — `hoursLeft` is a lower bound while this is above zero. */
+  unestimatedOpen: number;
   byStatus: Record<string, number>;
   childIds: number[];
   /** Redmine's own totals for the parent (they include every child, even ones not loaded). */
@@ -32,7 +40,7 @@ export interface ParentProgressRow {
 }
 
 /** Every parent that has at least one loaded child, with its children summarised. */
-export function buildParentProgress(issues: Issue[], scope: ChildScope = "all"): ParentProgressRow[] {
+export function buildParentProgress(issues: Issue[], scope: ChildScope = "all", devDoneCounts = true): ParentProgressRow[] {
   const byId = new Map(issues.map((i) => [i.id, i]));
   const childrenByParent = new Map<number, Issue[]>();
   for (const issue of issues) {
@@ -47,17 +55,35 @@ export function buildParentProgress(issues: Issue[], scope: ChildScope = "all"):
     const direct = childrenByParent.get(parent.id);
     if (!direct || direct.length === 0) continue;
 
-    let kids: Issue[] = direct;
-    if (scope === "all") {
-      kids = [];
-      const seen = new Set<number>([parent.id]);
-      const stack = [...direct];
-      while (stack.length > 0) {
-        const kid = stack.pop()!;
-        if (seen.has(kid.id)) continue; // guards a corrupt parent cycle
-        seen.add(kid.id);
-        kids.push(kid);
-        stack.push(...(childrenByParent.get(kid.id) ?? []));
+    // Every ticket nested under the parent, at any depth.
+    const descendants: Issue[] = [];
+    const seen = new Set<number>([parent.id]);
+    const stack = [...direct];
+    while (stack.length > 0) {
+      const kid = stack.pop()!;
+      if (seen.has(kid.id)) continue; // guards a corrupt parent cycle
+      seen.add(kid.id);
+      descendants.push(kid);
+      stack.push(...(childrenByParent.get(kid.id) ?? []));
+    }
+    const kids: Issue[] = scope === "all" ? descendants : direct;
+
+    // Delivery is always judged on the leaf tickets underneath, so a parent is not "done" just because
+    // a container in between has been closed.
+    let leaves = 0;
+    let deliveredLeaves = 0;
+    let hoursLeft = 0;
+    let unestimatedOpen = 0;
+    for (const d of descendants) {
+      if (childrenByParent.has(d.id)) continue;
+      const stage = stageOf(d);
+      if (stage === "dropped") continue;
+      leaves += 1;
+      const done = isDelivered(stage, devDoneCounts);
+      if (done) deliveredLeaves += 1;
+      if (isOpenWork(stage) && !done) {
+        if (d.estimatedHours == null) unestimatedOpen += 1;
+        else hoursLeft += Math.max(0, d.estimatedHours - (d.spentHours ?? 0));
       }
     }
 
@@ -85,6 +111,9 @@ export function buildParentProgress(issues: Issue[], scope: ChildScope = "all"):
       open: kids.length - closed,
       closedPercent: kids.length > 0 ? (closed / kids.length) * 100 : null,
       avgDonePercent: kids.length > 0 ? doneSum / kids.length : null,
+      deliveredPercent: leaves > 0 ? (deliveredLeaves / leaves) * 100 : null,
+      hoursLeft: Math.round(hoursLeft * 100) / 100,
+      unestimatedOpen,
       byStatus,
       childIds: kids.map((k) => k.id).sort((a, b) => a - b),
       estimatedHours: parent.totalEstimatedHours ?? parent.estimatedHours ?? null,

@@ -5,6 +5,7 @@ import { DEFAULT_WINDOW, LoadWindow, windowKey, windowPhrase } from "../utils/da
 import { aggregateTimeByUser, aggregateTimeByUserAndMonth } from "../utils/aggregations";
 import { exportTimeSpentToExcel } from "../utils/excelExport";
 import { blank, formatDate, formatDateTime, formatHours } from "../utils/format";
+import TimesheetGrid from "./TimesheetGrid";
 
 interface Props {
   projectIdentifier: string;
@@ -203,6 +204,7 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
 
   return (
     <div className="space-y-4">
+      <TimesheetGrid entries={timeEntries} issues={issues} loadWindow={loadWindow} projectLabel={projectLabel} />
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>

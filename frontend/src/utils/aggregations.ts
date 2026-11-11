@@ -87,6 +87,15 @@ export function resolutionTimeStats(issues: Issue[]): ResolutionTimeStats {
   return { average: sum / sorted.length, median, min: sorted[0], max: sorted[sorted.length - 1], sampleSize: sorted.length };
 }
 
+/**
+ * Hours logged on this ticket itself. Summing the roll-up figure (`totalSpentHours`, which already
+ * includes every child) over a list that also holds the children counts the same hours twice, so
+ * every sum across tickets uses this instead.
+ */
+export function directSpentHours(issue: Issue): number {
+  return issue.spentHours ?? 0;
+}
+
 export interface EstimateVsActual {
   issueId: number;
   estimatedHours: number | null;
@@ -97,7 +106,7 @@ export interface EstimateVsActual {
 
 export function estimateVsActual(issue: Issue): EstimateVsActual {
   const estimated = issue.estimatedHours;
-  const actual = issue.totalSpentHours ?? issue.spentHours;
+  const actual = issue.spentHours; // the ticket's own hours, like its own estimate
   if (estimated === null || estimated === undefined || actual === null || actual === undefined) {
     return { issueId: issue.id, estimatedHours: estimated ?? null, actualHours: actual ?? null, variance: null, variancePercent: null };
   }
@@ -122,7 +131,7 @@ export function aggregateByAssignee(issues: Issue[]): AssigneeSummaryRow[] {
     row.total++;
     if (issue.statusIsClosed) row.closed++;
     else row.open++;
-    row.totalTimeSpent += issue.totalSpentHours ?? issue.spentHours ?? 0;
+    row.totalTimeSpent += directSpentHours(issue);
     map.set(key, row);
   }
   return Array.from(map.values()).sort((a, b) => b.total - a.total);
@@ -159,7 +168,7 @@ export function aggregateByRelease(issues: Issue[]): ReleaseSummaryRow[] {
     if (issue.tracker === "Bug") row.bugs++;
     if (issue.tracker === "Feature") row.features++;
     row.totalEstimatedHours += issue.estimatedHours ?? 0;
-    row.totalActualHours += issue.totalSpentHours ?? issue.spentHours ?? 0;
+    row.totalActualHours += directSpentHours(issue);
     map.set(key, row);
   }
   return Array.from(map.values()).sort((a, b) => b.total - a.total);

@@ -28,10 +28,11 @@ export default function RefreshBar({ lastRefreshed, lastFetchDurationMs, loading
         <button
           onClick={onExport}
           disabled={exportDisabled}
+          title="Downloads the ticket list for what is selected (sheets: Master Tickets, Summary, Time Analysis, Aging)"
           className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
         >
           <DownloadIcon className="h-3.5 w-3.5" />
-          Export to Excel
+          Export tickets
         </button>
       )}
       {loading && onCancel && (

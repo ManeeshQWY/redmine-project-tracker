@@ -15,6 +15,8 @@ const TAB_PATHS: Record<string, string> = {
   parents: "M5 4v16M5 8h6M5 14h6M11 6h8M11 10h8M11 12h8M11 16h8",
   closedTrend: "M3 17l6-6 4 4 8-8M15 6h6v6",
   myAssigned: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 20c0-4 4-6 8-6s8 2 8 6",
+  standup: "M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2",
+  quality: "M9 12l2 2 4-4M12 3l8 3v6c0 4-3 7-8 9-5-2-8-5-8-9V6l8-3z",
 };
 
 /** Small outline icon set for the tab navigation — approximate, not pixel-perfect

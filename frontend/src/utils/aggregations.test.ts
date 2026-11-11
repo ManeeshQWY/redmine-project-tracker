@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { aggregateTimeByUserAndMonth } from "./aggregations";
+import { aggregateByAssignee, aggregateByRelease, aggregateTimeByUserAndMonth, estimateVsActual } from "./aggregations";
+import { makeIssue } from "../test-utils/factories";
 import { TimeEntry } from "../types/issue";
 
 function makeTimeEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
@@ -55,5 +56,29 @@ describe("aggregateTimeByUserAndMonth", () => {
 
   it("returns empty rows/users for no entries", () => {
     expect(aggregateTimeByUserAndMonth([])).toEqual({ rows: [], users: [] });
+  });
+});
+
+describe("hours are not counted twice", () => {
+  // The Epic's roll-up (total) already includes the Task under it; the Task's own hours are 6.
+  const epic = makeIssue({ id: 1, assignedTo: "Dan", targetVersion: "v1", estimatedHours: 2, spentHours: 4, totalSpentHours: 10 });
+  const task = makeIssue({ id: 2, parentId: 1, assignedTo: "Dan", targetVersion: "v1", estimatedHours: 5, spentHours: 6, totalSpentHours: 6 });
+
+  it("sums each ticket's own hours per assignee", () => {
+    expect(aggregateByAssignee([epic, task])[0].totalTimeSpent).toBe(10); // 4 + 6, not 10 + 6
+  });
+
+  it("sums each ticket's own hours per release", () => {
+    const row = aggregateByRelease([epic, task])[0];
+    expect(row.totalActualHours).toBe(10);
+    expect(row.totalEstimatedHours).toBe(7);
+  });
+
+  it("compares a ticket's own estimate with its own hours", () => {
+    expect(estimateVsActual(epic)).toMatchObject({ estimatedHours: 2, actualHours: 4, variance: 2 });
+  });
+
+  it("treats a ticket with no logged hours as zero", () => {
+    expect(aggregateByAssignee([makeIssue({ id: 3, assignedTo: "Dan" })])[0].totalTimeSpent).toBe(0);
   });
 });

@@ -24,7 +24,7 @@ export default function AssigneeSummaryTable({ issues }: { issues: Issue[] }) {
           <option value="total">Sort by Total Tickets</option>
           <option value="open">Sort by Open Tickets</option>
           <option value="closed">Sort by Closed Tickets</option>
-          <option value="totalTimeSpent">Sort by Total Time Spent</option>
+          <option value="totalTimeSpent">Sort by Time Spent</option>
         </select>
       </div>
       <div className="max-h-80 overflow-auto">
@@ -35,7 +35,7 @@ export default function AssigneeSummaryTable({ issues }: { issues: Issue[] }) {
               <th className="px-2 py-1.5 text-right">Total</th>
               <th className="px-2 py-1.5 text-right">Open</th>
               <th className="px-2 py-1.5 text-right">Closed</th>
-              <th className="px-2 py-1.5 text-right">Total Time Spent (h)</th>
+              <th className="px-2 py-1.5 text-right"><span title="Hours logged on the tickets assigned to this person (each ticket's own hours, not its sub-tickets')">Time Spent (h)</span></th>
             </tr>
           </thead>
           <tbody>

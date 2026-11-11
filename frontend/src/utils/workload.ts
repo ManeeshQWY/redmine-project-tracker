@@ -1,5 +1,7 @@
 import { Issue, TimeEntry } from "../types/issue";
+import { daysBetween, todayString } from "./activity";
 import { attachedNames, NO_VERSION_LABEL, normalizeName, PerformanceFilters, PerformanceRole, RoleLookup } from "./performance";
+import { leafIssues } from "./stages";
 
 // How many tickets each person has open right now, whatever the ticket type — a separate
 // view from the per-task performance rows, which only cover Epics, Features, Stories, Bugs,
@@ -12,7 +14,19 @@ export interface WorkloadRow {
   bugs: number;
   byStatus: Record<string, number>;
   tickets: Issue[]; // the open tickets counted, in status then id order
+  /** Hours still to do on their open leaf tickets: estimate minus hours logged, never below zero.
+   * Tickets with no estimate add nothing here — they are counted in `unestimated` instead. */
+  remainingHours: number;
+  /** Open leaf tickets with no estimate, so `remainingHours` is a lower bound when this is above zero. */
+  unestimated: number;
+  /** Open leaf tickets not updated for more than a week. */
+  quiet: number;
+  /** Days since their oldest open ticket was created. */
+  oldestDays: number | null;
 }
+
+/** An open leaf ticket with no update for more than this many days counts as quiet. */
+export const QUIET_DAYS = 7;
 
 export interface WorkloadSummary {
   people: number;
@@ -39,7 +53,8 @@ export function buildWorkload(
   roles: RoleLookup,
   filters: PerformanceFilters,
   chipTrackers: string[],
-  knownPeople: string[] = []
+  knownPeople: string[] = [],
+  now: Date = new Date()
 ): WorkloadRow[] {
   const q = filters.search.trim().toLowerCase();
   const idQuery = q.replace(/^#/, "");
@@ -89,12 +104,38 @@ export function buildWorkload(
     person(name);
   }
 
+  const today = todayString(now);
+  const leafIds = new Set(leafIssues(issues).map((i) => i.id));
   const rows: WorkloadRow[] = [];
   for (const { name, tickets } of people.values()) {
     const sorted = [...tickets].sort((a, b) => a.status.localeCompare(b.status) || a.id - b.id);
     const byStatus: Record<string, number> = {};
     for (const t of sorted) byStatus[t.status || "(blank)"] = (byStatus[t.status || "(blank)"] ?? 0) + 1;
-    rows.push({ name, role: roleOf(name), open: sorted.length, bugs: sorted.filter(isBug).length, byStatus, tickets: sorted });
+
+    let remaining = 0;
+    let unestimated = 0;
+    let quiet = 0;
+    let oldest: number | null = null;
+    for (const t of sorted) {
+      const age = daysBetween(t.createdOn, today);
+      if (oldest === null || age > oldest) oldest = age;
+      if (!leafIds.has(t.id)) continue; // a parent's hours are the sum of its children's
+      if (t.estimatedHours == null) unestimated += 1;
+      else remaining += Math.max(0, t.estimatedHours - (t.spentHours ?? 0));
+      if (daysBetween(t.updatedOn, today) > QUIET_DAYS) quiet += 1;
+    }
+    rows.push({
+      name,
+      role: roleOf(name),
+      open: sorted.length,
+      bugs: sorted.filter(isBug).length,
+      byStatus,
+      tickets: sorted,
+      remainingHours: Math.round(remaining * 100) / 100,
+      unestimated,
+      quiet,
+      oldestDays: oldest,
+    });
   }
   return rows.sort((a, b) => b.open - a.open || a.name.localeCompare(b.name));
 }

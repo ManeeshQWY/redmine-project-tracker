@@ -52,15 +52,18 @@ function makeTimeEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
   return { id: 1, project: "P", issueId: 1, user: "Alice", activity: "Development", hours: 1, comments: null, spentOn: "2026-01-01", ...overrides };
 }
 
+// The timesheet grid above them is a table too; these tests are about the tables below it.
+const tables = () => screen.getAllByRole("table").filter((t) => t.getAttribute("aria-label") !== "Hours logged per person per day");
+
 // The panel renders two tables: the per-user summary (always first) and the Monthly
 // Breakdown (always second, and it reuses user names as its own column headers) — so
 // a plain screen.getByText("SomeUser") is ambiguous once both tables are on screen.
 // These helpers scope queries to the right one explicitly.
 function summaryTable() {
-  return screen.getAllByRole("table")[0];
+  return tables()[0];
 }
 function breakdownTable() {
-  return screen.getAllByRole("table")[1];
+  return tables()[1];
 }
 
 describe("TimeSpentByUserPanel", () => {
@@ -185,7 +188,7 @@ describe("TimeSpentByUserPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /load time data/i }));
 
     await waitFor(() => expect(screen.getByText(/1 entry .* logged without a ticket/i)).toBeInTheDocument());
-    const noTicketTable = screen.getAllByRole("table")[2];
+    const noTicketTable = tables()[2];
     expect(within(noTicketTable).getByText("Weekly sync")).toBeInTheDocument();
     expect(within(noTicketTable).queryByText("Alice")).not.toBeInTheDocument(); // ticket-linked entry excluded
 

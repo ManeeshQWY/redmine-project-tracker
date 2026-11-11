@@ -30,12 +30,25 @@ import ClosedTicketsTrendPanel from "./components/ClosedTicketsTrendPanel";
 import UserAssignmentPanel from "./components/UserAssignmentPanel";
 import ChipMultiSelect from "./components/ChipMultiSelect";
 import ChatPanel from "./components/ChatPanel";
+import AwaitingQaPanel from "./components/AwaitingQaPanel";
+import BugHealthPanel from "./components/BugHealthPanel";
+import ChasePanel from "./components/ChasePanel";
+import ErrorBoundary from "./components/ErrorBoundary";
+import LimitedWindowNotice from "./components/LimitedWindowNotice";
+import EstimateAccuracyPanel from "./components/EstimateAccuracyPanel";
+import FlowPanel from "./components/FlowPanel";
+import DeliveryPanel from "./components/DeliveryPanel";
+import HygienePanel from "./components/HygienePanel";
+import StalenessPanel from "./components/StalenessPanel";
+import { readDevDoneCounts, storeDevDoneCounts } from "./utils/stages";
 import { LogoMark, TabIcon } from "./components/icons";
 
-type Tab = "overview" | "tickets" | "parents" | "aging" | "release" | "qa" | "time" | "performance" | "closedTrend" | "myAssigned";
+type Tab = "overview" | "standup" | "quality" | "tickets" | "parents" | "aging" | "release" | "qa" | "time" | "performance" | "closedTrend" | "myAssigned";
 
 const TABS: { id: Tab; label: string; description: string }[] = [
   { id: "overview", label: "Overview", description: "Key metrics and breakdowns across the current selection." },
+  { id: "standup", label: "Stand-up", description: "What needs chasing today: quiet, unowned, unestimated, over-budget and overdue work." },
+  { id: "quality", label: "Data Quality", description: "How complete the ticket fields are, and who leaves them blank." },
   { id: "tickets", label: "Ticket Table", description: "Full ticket list with detailed filters and search." },
   { id: "parents", label: "Parent Progress", description: "Child tickets under each Epic, Feature or other parent — by status, with percent complete." },
   { id: "aging", label: "Aging & Resolution", description: "How long open tickets have sat, and how fast they close." },
@@ -73,6 +86,9 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<TicketFilters>(EMPTY_FILTERS);
+  const [devDoneCounts, setDevDoneCounts] = useState<boolean>(readDevDoneCounts);
+  // Counts presses of Refresh, so views that load time entries on their own can reload them too.
+  const [refreshTick, setRefreshTick] = useState(0);
   const [tab, setTab] = useState<Tab>(readStoredTab);
   // The period to load (last N days, or an exact date range). Recent-only by default — see
   // utils/dataWindow.
@@ -251,7 +267,7 @@ export default function App() {
               <p className="text-[11px] leading-tight text-slate-500 dark:text-slate-400">support.qwysoft.com</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <ProjectSelector projects={projects} selected={selectedProject} onSelect={selectProject} />
             <button
               onClick={toggleTheme}
@@ -281,7 +297,7 @@ export default function App() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1500px] p-6">
+      <div className="mx-auto max-w-[1500px] p-6 pb-24">
         {error && (
           <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
             {error}
@@ -344,12 +360,15 @@ export default function App() {
                   lastRefreshed={lastRefreshed}
                   lastFetchDurationMs={lastFetchDurationMs}
                   loading={loading}
-                  onRefresh={() => loadIssues(selectedProject, true)}
+                  onRefresh={() => {
+                    setRefreshTick((t) => t + 1);
+                    loadIssues(selectedProject, true);
+                  }}
                   // The loading card has its own Cancel while nothing is on screen yet.
                   onCancel={issues.length > 0 ? cancelLoad : undefined}
                   onExport={() => meta && exportWithReleaseDates(meta.redmineBaseUrl, selectedProject, selectedProjectLabel)}
                   exportDisabled={loading || filteredIssues.length === 0}
-                  showExport={tab !== "performance"}
+                  showExport={tab === "overview" || tab === "tickets"}
                 />
                 </div>
               </div>
@@ -387,6 +406,7 @@ export default function App() {
                   {/* Global tracker filter — the one filter that applies uniformly across every tab
                       (Overview, Aging, Release, QA, Closed Trend, Open Tickets per User, and the Ticket
                       Table's own filters/export), rather than each panel having its own copy. */}
+                  {tab !== "time" && (
                   <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                     <ChipMultiSelect
                       label="Tracker"
@@ -395,10 +415,25 @@ export default function App() {
                       onChange={(next) => setFilters((prev) => ({ ...prev, trackers: next }))}
                     />
                   </div>
+                  )}
+
+                  {["overview", "aging", "release", "qa", "closedTrend"].includes(tab) && (
+                    <LimitedWindowNotice loadWindow={loadWindow} onLoadAllTime={() => changeWindow({ kind: "days", days: 0 })} />
+                  )}
+
+                  <ErrorBoundary resetKey={`${tab}|${selectedProject}`}>
 
                   {tab === "overview" && (
                   <div className="space-y-4">
                     <KpiCards issues={filteredIssues} />
+                    <DeliveryPanel
+                      issues={filteredIssues}
+                      devDoneCounts={devDoneCounts}
+                      onDevDoneCountsChange={(v) => {
+                        setDevDoneCounts(v);
+                        storeDevDoneCounts(v);
+                      }}
+                    />
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                       <BreakdownChart title="Ticket Status" data={aggregateByStatus(filteredIssues)} onBarClick={(v) => drillDown({ status: v })} />
                       <BreakdownChart title="Tracker" data={aggregateByTracker(filteredIssues)} onBarClick={(v) => drillDown({ trackers: [v] })} />
@@ -411,6 +446,34 @@ export default function App() {
                     </div>
                     <AssigneeSummaryTable issues={filteredIssues} />
                   </div>
+                )}
+
+                {tab === "standup" && (
+                  <ChasePanel
+                    projectIdentifier={selectedProject}
+                    projectLabel={selectedProjectLabel}
+                    refreshTick={refreshTick}
+                    issues={issues}
+                    trackers={filters.trackers}
+                    redmineBaseUrl={meta?.redmineBaseUrl ?? ""}
+                    loadWindow={loadWindow}
+                    onSessionExpired={() => setUser(null)}
+                    onLoadAllTime={() => changeWindow({ kind: "days", days: 0 })}
+                  />
+                )}
+
+                {tab === "quality" && (
+                  <HygienePanel
+                    projectIdentifier={selectedProject}
+                    projectLabel={selectedProjectLabel}
+                    refreshTick={refreshTick}
+                    trackers={filters.trackers}
+                    issues={issues}
+                    redmineBaseUrl={meta?.redmineBaseUrl ?? ""}
+                    loadWindow={loadWindow}
+                    onSessionExpired={() => setUser(null)}
+                    onLoadAllTime={() => changeWindow({ kind: "days", days: 0 })}
+                  />
                 )}
 
                 {tab === "tickets" && (
@@ -428,6 +491,7 @@ export default function App() {
                     redmineBaseUrl={meta?.redmineBaseUrl ?? ""}
                     projectLabel={selectedProjectLabel}
                     loadWindow={loadWindow}
+                    devDoneCounts={devDoneCounts}
                     onLoadAllTime={() => changeWindow({ kind: "days", days: 0 })}
                   />
                 )}
@@ -435,15 +499,23 @@ export default function App() {
                 {tab === "aging" && (
                   <div className="space-y-4">
                     <AgingPanel issues={filteredIssues} redmineBaseUrl={meta?.redmineBaseUrl ?? ""} />
+                    <StalenessPanel issues={filteredIssues} redmineBaseUrl={meta?.redmineBaseUrl ?? ""} projectLabel={selectedProjectLabel} />
+                    <BugHealthPanel issues={filteredIssues} redmineBaseUrl={meta?.redmineBaseUrl ?? ""} projectLabel={selectedProjectLabel} />
                     <AgingByTrackerPanel issues={filteredIssues} />
                     <ResolutionTimePanel issues={filteredIssues} />
                     <EstimateVsActualPanel issues={filteredIssues} />
+                    <EstimateAccuracyPanel issues={filteredIssues} redmineBaseUrl={meta?.redmineBaseUrl ?? ""} devDoneCounts={devDoneCounts} projectLabel={selectedProjectLabel} />
                   </div>
                 )}
 
-                {tab === "release" && <ReleaseDashboard issues={filteredIssues} projectIdentifier={selectedProject} loadWindow={loadWindow} />}
+                {tab === "release" && <ReleaseDashboard issues={filteredIssues} projectIdentifier={selectedProject} loadWindow={loadWindow} devDoneCounts={devDoneCounts} projectLabel={selectedProjectLabel} />}
 
-                {tab === "qa" && <QADashboard issues={filteredIssues} />}
+                {tab === "qa" && (
+                  <div className="space-y-4">
+                    <QADashboard issues={filteredIssues} />
+                    <AwaitingQaPanel issues={filteredIssues} redmineBaseUrl={meta?.redmineBaseUrl ?? ""} projectLabel={selectedProjectLabel} />
+                  </div>
+                )}
 
                 {tab === "time" && (
                   <TimeSpentByUserPanel
@@ -468,9 +540,15 @@ export default function App() {
                   />
                 )}
 
-                {tab === "closedTrend" && <ClosedTicketsTrendPanel issues={filteredIssues} />}
+                {tab === "closedTrend" && (
+                  <div className="space-y-4">
+                    <FlowPanel issues={filteredIssues} allIssues={issues} projectLabel={selectedProjectLabel} />
+                    <ClosedTicketsTrendPanel issues={filteredIssues} />
+                  </div>
+                )}
 
-                  {tab === "myAssigned" && <UserAssignmentPanel issues={filteredIssues} redmineBaseUrl={meta?.redmineBaseUrl ?? ""} />}
+                  {tab === "myAssigned" && <UserAssignmentPanel issues={filteredIssues} redmineBaseUrl={meta?.redmineBaseUrl ?? ""} projectLabel={selectedProjectLabel} />}
+                  </ErrorBoundary>
                 </>
               )}
             </div>

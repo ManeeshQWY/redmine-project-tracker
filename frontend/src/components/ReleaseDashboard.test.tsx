@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import ReleaseDashboard from "./ReleaseDashboard";
 import { Issue } from "../types/issue";
 import * as api from "../services/api";
+import { ThemeProvider } from "../theme";
 
 function makeIssue(overrides: Partial<Issue> = {}): Issue {
   return {
@@ -27,19 +28,28 @@ describe("ReleaseDashboard release dates", () => {
       makeIssue({ id: 3 }),
     ];
 
-    render(<ReleaseDashboard issues={issues} projectIdentifier="p" />);
+    render(
+      <ThemeProvider>
+        <ReleaseDashboard issues={issues} projectIdentifier="p" />
+      </ThemeProvider>
+    );
 
-    await waitFor(() => expect(screen.getByText("31 Mar 2026")).toBeInTheDocument());
-    const row = (name: string) => screen.getByText(name).closest("tr") as HTMLElement;
+    await waitFor(() => expect(within(screen.getByRole("table", { name: "Release summary" })).getByText("31 Mar 2026")).toBeInTheDocument());
+    const summary = () => screen.getByRole("table", { name: "Release summary" });
+    const row = (name: string) => within(summary()).getByText(name).closest("tr") as HTMLElement;
     expect(within(row("Sprint 8")).getByText("—")).toBeInTheDocument();
     expect(within(row("No Target Version")).getByText("—")).toBeInTheDocument();
   });
 
   it("still renders the table (without dates) when the dates can't be loaded", async () => {
     vi.spyOn(api, "getVersions").mockRejectedValue(new Error("boom"));
-    render(<ReleaseDashboard issues={[makeIssue({ targetVersion: "Sprint 7", targetVersionId: 7 })]} projectIdentifier="p" />);
+    render(
+      <ThemeProvider>
+        <ReleaseDashboard issues={[makeIssue({ targetVersion: "Sprint 7", targetVersionId: 7 })]} projectIdentifier="p" />
+      </ThemeProvider>
+    );
 
     await waitFor(() => expect(screen.getByText(/release dates couldn.t be loaded/i)).toBeInTheDocument());
-    expect(screen.getByText("Sprint 7")).toBeInTheDocument();
+    expect(within(screen.getByRole("table", { name: "Release summary" })).getByText("Sprint 7")).toBeInTheDocument();
   });
 });

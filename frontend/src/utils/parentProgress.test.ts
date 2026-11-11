@@ -210,3 +210,39 @@ describe("childHours", () => {
     expect(childHours(issue({ id: 4 }), "all")).toEqual({ estimated: null, spent: null });
   });
 });
+
+describe("delivery and hours left under a parent", () => {
+  const issues = [
+    issue({ id: 1, tracker: "Epic" }),
+    issue({ id: 2, parentId: 1, tracker: "Feature" }), // a container: judged by the tickets under it
+    issue({ id: 3, parentId: 2, status: "Dev Completed", estimatedHours: 4, spentHours: 3 }),
+    issue({ id: 4, parentId: 2, status: "New", estimatedHours: 10, spentHours: 2 }),
+    issue({ id: 5, parentId: 1, ...closed, estimatedHours: 2 }),
+    issue({ id: 6, parentId: 1, status: "Duplicate", statusIsClosed: true }), // dropped: not counted
+  ];
+  const epic = (devDone: boolean) => buildParentProgress(issues, "all", devDone).find((r) => r.id === 1)!;
+
+  it("counts leaf tickets delivered, with Dev Completed counting", () => {
+    expect(epic(true).deliveredPercent).toBeCloseTo((2 / 3) * 100); // #3 and #5 of #3, #4, #5
+  });
+
+  it("moves the line back to Closed when Dev Completed does not count", () => {
+    expect(epic(false).deliveredPercent).toBeCloseTo((1 / 3) * 100);
+  });
+
+  it("is judged on leaf tickets even when only direct children are counted", () => {
+    const direct = buildParentProgress(issues, "direct", true).find((r) => r.id === 1)!;
+    expect(direct.total).toBe(3); // #2, #5, #6
+    expect(direct.deliveredPercent).toBeCloseTo((2 / 3) * 100);
+  });
+
+  it("adds up the hours left on open undelivered leaf tickets, never below zero", () => {
+    expect(epic(true).hoursLeft).toBe(8); // only #4: 10 - 2; #3 is delivered
+    expect(epic(false).hoursLeft).toBe(9); // #3 is open again: 4 - 3 = 1, plus 8
+  });
+
+  it("has no percentage for a parent with only dropped tickets under it", () => {
+    const rows = buildParentProgress([issue({ id: 1 }), issue({ id: 2, parentId: 1, status: "Duplicate", statusIsClosed: true })]);
+    expect(rows[0].deliveredPercent).toBeNull();
+  });
+});

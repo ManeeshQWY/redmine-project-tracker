@@ -273,6 +273,30 @@ with the bugs among them and a count per status; click a person to list the tick
 project (on one of its tickets or with time logged) who have none show as 0. It follows the tab's filters, only counts tickets in the loaded period (use
 **Load all time** for the full picture), and is not part of the Excel export.
 
+## Manager views
+
+Built from the tickets (and, where noted, time entries) already loaded — no database.
+
+- **Stage model** (`frontend/src/utils/stages.ts`): every Redmine status is mapped by name to a stage — Not started, Active,
+  Blocked, Dev done awaiting QA, In QA, QA passed, Done, Dropped. "Delivered" counts Done, and also Dev Completed and later when the
+  **Count "Dev Completed" as delivered** switch on Overview is on (it is remembered in the browser). Counts use *leaf* tickets
+  (nothing nested under them) so a parent and its children are never both counted, and leave Dropped tickets out.
+- **Overview**: quick-count tiles (unassigned, no estimate, overdue, created/closed in 7 days) and a Delivery progress card.
+- **Stand-up**: ten tiles of what needs chasing today (gone quiet, unassigned, no estimate, over budget, overdue, blocked, what
+  moved…), each listing its tickets by person, with Copy as text. Hours logged count as activity (time entries load in the background).
+- **Data Quality**: how complete assignee / estimate / due date / version / priority / description are, and who leaves them blank.
+- **Aging & Resolution**: days since last update (by stage or person), Bug health, estimate accuracy per person.
+- **Release Dashboard**: release readiness — stage mix, delivered %, days to release, open bugs, hours left, on track / at risk / late —
+  by release (a ticket without a version takes its parent's) or by milestone.
+- **Time Spent by User**: who logged time on each of the last ten working days. **Closed Tickets Trend**: created vs closed, backlog,
+  days to close, work in progress. **QA Dashboard**: tickets waiting for QA. **Parent Progress**: Delivered % and Hours left.
+- Hours are each ticket's *own* logged hours everywhere they are added up, so a parent's roll-up is never counted on top of its children.
+- Only tickets updated in the chosen period are loaded; tabs that depend on every open ticket say so and offer **Load all time**.
+- A failure in one screen shows an error message on that screen instead of blanking the app.
+
+Every report has its own **Export** button, producing a workbook of exactly what is on screen (header on row 1, numbers as
+numbers, ticket numbers as links). The header's **Export tickets** is the ticket list only (Overview and Ticket Table).
+
 ## Known limitations
 
 - Sessions and the issue/meta caches are in-memory only — a backend restart logs

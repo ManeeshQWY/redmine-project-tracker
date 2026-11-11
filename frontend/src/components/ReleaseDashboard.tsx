@@ -4,6 +4,7 @@ import { DEFAULT_WINDOW, LoadWindow, windowKey } from "../utils/dataWindow";
 import { Issue, VersionMeta } from "../types/issue";
 import { aggregateByRelease, releaseDatesByName } from "../utils/aggregations";
 import { formatDate, formatHours } from "../utils/format";
+import ReadinessPanel from "./ReadinessPanel";
 
 type SortKey = "total" | "closed" | "notClosed" | "bugs" | "features" | "totalEstimatedHours" | "totalActualHours" | "releaseDate";
 
@@ -11,9 +12,11 @@ interface Props {
   issues: Issue[];
   projectIdentifier: string;
   loadWindow?: LoadWindow;
+  devDoneCounts?: boolean; // does "Dev Completed" count as delivered (the Overview switch)
+  projectLabel?: string;
 }
 
-export default function ReleaseDashboard({ issues, projectIdentifier, loadWindow = DEFAULT_WINDOW }: Props) {
+export default function ReleaseDashboard({ issues, projectIdentifier, loadWindow = DEFAULT_WINDOW, devDoneCounts = true, projectLabel }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("total");
   const [versions, setVersions] = useState<VersionMeta[]>([]);
   const [versionsError, setVersionsError] = useState(false);
@@ -52,6 +55,8 @@ export default function ReleaseDashboard({ issues, projectIdentifier, loadWindow
   }, [issues, sortKey, dateByName]);
 
   return (
+    <>
+    <ReadinessPanel issues={issues} releaseDates={dateByName} devDoneCounts={devDoneCounts} projectLabel={projectLabel} />
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Release / Target Version Summary</h3>
@@ -74,7 +79,7 @@ export default function ReleaseDashboard({ issues, projectIdentifier, loadWindow
         <p className="mb-2 text-[11px] text-amber-600 dark:text-amber-400">Release dates couldn&apos;t be loaded — everything else below is unaffected.</p>
       )}
       <div className="max-h-[480px] overflow-auto">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs" aria-label="Release summary">
           <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <tr>
               <th className="px-2 py-1.5">Release</th>
@@ -85,7 +90,7 @@ export default function ReleaseDashboard({ issues, projectIdentifier, loadWindow
               <th className="px-2 py-1.5 text-right">Bugs</th>
               <th className="px-2 py-1.5 text-right">Features</th>
               <th className="px-2 py-1.5 text-right">Est. Hours</th>
-              <th className="px-2 py-1.5 text-right">Actual Hours</th>
+              <th className="px-2 py-1.5 text-right" title="Hours logged on each ticket itself, so a parent and its sub-tickets are not counted twice">Actual Hours</th>
             </tr>
           </thead>
           <tbody>
@@ -106,5 +111,6 @@ export default function ReleaseDashboard({ issues, projectIdentifier, loadWindow
         </table>
       </div>
     </div>
+    </>
   );
 }

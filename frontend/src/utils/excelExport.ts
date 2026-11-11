@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { Issue, TimeEntry, VersionMeta } from "../types/issue";
+import { todayString } from "./activity";
 import { PerformanceRow } from "./performance";
 import { ChildScope, childHours, ParentProgressRow, StatusSeries } from "./parentProgress";
 import {
@@ -17,9 +18,12 @@ import {
   UserTimeSummaryRow,
 } from "./aggregations";
 
+/** Hours to two decimals, so a logged 1h40m shows as 1.67 rather than 1.6666660000000002. */
+const roundHours = (n: number): number => Math.round(n * 100) / 100;
+
 const HEADER_FILL: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1D4ED8" } };
 
-function styleHeaderRow(sheet: ExcelJS.Worksheet, rowNumber = 1) {
+export function styleHeaderRow(sheet: ExcelJS.Worksheet, rowNumber = 1) {
   const row = sheet.getRow(rowNumber);
   row.font = { bold: true, color: { argb: "FFFFFFFF" } };
   row.fill = HEADER_FILL;
@@ -75,11 +79,11 @@ function addMasterSheet(workbook: ExcelJS.Workbook, issues: Issue[], redmineBase
       releaseDate: (issue.targetVersion && releaseDates.get(issue.targetVersion)) || "",
       startDate: issue.startDate ?? "",
       dueDate: issue.dueDate ?? "",
-      closedOn: issue.closedOn ?? "",
-      estimatedHours: issue.estimatedHours ?? "",
-      spentHours: issue.spentHours ?? "",
-      totalSpentHours: issue.totalSpentHours ?? "",
-      totalEstimatedHours: issue.totalEstimatedHours ?? "",
+      closedOn: issue.closedOn?.slice(0, 10) ?? "",
+      estimatedHours: issue.estimatedHours == null ? "" : roundHours(issue.estimatedHours),
+      spentHours: issue.spentHours == null ? "" : roundHours(issue.spentHours),
+      totalSpentHours: issue.totalSpentHours == null ? "" : roundHours(issue.totalSpentHours),
+      totalEstimatedHours: issue.totalEstimatedHours == null ? "" : roundHours(issue.totalEstimatedHours),
       assignedQA: issue.assignedQA ?? "",
       platform: issue.platform ?? "",
       additionalAssignee: issue.additionalAssignee ?? "",
@@ -88,7 +92,12 @@ function addMasterSheet(workbook: ExcelJS.Workbook, issues: Issue[], redmineBase
     row.getCell("link").value = { text: `#${issue.id}`, hyperlink: `${redmineBaseUrl}/issues/${issue.id}` };
   }
   styleHeaderRow(sheet);
+  sheet.views = [{ state: "frozen", ySplit: 1 }];
   sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: sheet.columns.length } };
+  // These two columns are Redmine's roll-ups: a parent's figure already includes its sub-tickets, so adding
+  // the column up counts those hours more than once. "Direct Time Spent" / "Estimated Hours" are the ticket's own.
+  sheet.getCell("U1").note = "Redmine's roll-up: this ticket plus all its sub-tickets. Do not add this column up — use Direct Time Spent.";
+  sheet.getCell("V1").note = "Redmine's roll-up: this ticket plus all its sub-tickets. Do not add this column up — use Estimated Hours.";
 }
 
 function addSummarySheet(workbook: ExcelJS.Workbook, issues: Issue[], releaseDates: Map<string, string>) {
@@ -118,6 +127,7 @@ function addSummarySheet(workbook: ExcelJS.Workbook, issues: Issue[], releaseDat
     sheet.addRow({ metric: r.version, value: r.total, percent: `${r.closed} closed / ${r.notClosed} pending`, releaseDate: releaseDates.get(r.version) ?? "" });
   }
   styleHeaderRow(sheet);
+  sheet.views = [{ state: "frozen", ySplit: 1 }];
 }
 
 function addTimeAnalysisSheet(workbook: ExcelJS.Workbook, issues: Issue[]) {
@@ -136,13 +146,14 @@ function addTimeAnalysisSheet(workbook: ExcelJS.Workbook, issues: Issue[]) {
     sheet.addRow({
       id: issue.id,
       subject: issue.subject,
-      estimated: r.estimatedHours ?? "",
-      actual: r.actualHours ?? "",
-      variance: r.variance ?? "",
+      estimated: r.estimatedHours === null ? "" : roundHours(r.estimatedHours),
+      actual: r.actualHours === null ? "" : roundHours(r.actualHours),
+      variance: r.variance === null ? "" : roundHours(r.variance),
       variancePercent: r.variancePercent === null ? "" : `${r.variancePercent.toFixed(1)}%`,
     });
   }
   styleHeaderRow(sheet);
+  sheet.views = [{ state: "frozen", ySplit: 1 }];
 }
 
 function addAgingSheet(workbook: ExcelJS.Workbook, issues: Issue[]) {
@@ -160,15 +171,17 @@ function addAgingSheet(workbook: ExcelJS.Workbook, issues: Issue[]) {
   }
   sheet.getColumn(2).width = 40;
   styleHeaderRow(sheet);
+  styleHeaderRow(sheet, 3 + bucketAgingOpenTickets(issues).length); // the second table's header row
+  sheet.views = [{ state: "frozen", ySplit: 1 }];
 }
 
-async function downloadWorkbook(workbook: ExcelJS.Workbook, filenamePrefix: string, projectName: string) {
+export async function downloadWorkbook(workbook: ExcelJS.Workbook, filenamePrefix: string, projectName: string) {
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   const safeName = projectName.replace(/[^a-z0-9]+/gi, "_");
-  const dateStamp = new Date().toISOString().slice(0, 10);
+  const dateStamp = todayString(new Date()); // the user's calendar date, not UTC
   a.href = url;
   a.download = `${filenamePrefix}_${safeName}_${dateStamp}.xlsx`;
   document.body.appendChild(a);
@@ -204,6 +217,7 @@ function addTimeByUserSheet(workbook: ExcelJS.Workbook, rows: UserTimeSummaryRow
   sheet.getColumn(3).width = 10;
   sheet.getColumn(4).width = 60;
   styleHeaderRow(sheet, 3);
+  sheet.views = [{ state: "frozen", ySplit: 3 }];
 }
 
 function addNoTicketTimeSheet(workbook: ExcelJS.Workbook, entries: TimeEntry[]) {
@@ -214,6 +228,7 @@ function addNoTicketTimeSheet(workbook: ExcelJS.Workbook, entries: TimeEntry[]) 
   }
   [12, 24, 24, 20, 10, 60].forEach((w, i) => (sheet.getColumn(i + 1).width = w));
   styleHeaderRow(sheet);
+  sheet.views = [{ state: "frozen", ySplit: 1 }];
 }
 
 function addTimeByMonthSheet(workbook: ExcelJS.Workbook, rows: UserMonthRow[], users: string[]) {
@@ -226,6 +241,7 @@ function addTimeByMonthSheet(workbook: ExcelJS.Workbook, rows: UserMonthRow[], u
   sheet.getColumn(1).width = 14;
   for (let i = 2; i <= header.length; i++) sheet.getColumn(i).width = 14;
   styleHeaderRow(sheet);
+  sheet.views = [{ state: "frozen", ySplit: 1, xSplit: 1 }];
 }
 
 /**
@@ -251,6 +267,14 @@ export async function exportTimeSpentToExcel(
 
   await downloadWorkbook(workbook, "redmine_time_spent", projectName);
 }
+
+const PERFORMANCE_NOTES = [
+  "One row per person per task. A parent task (Epic, Feature…) includes the hours, estimates and bugs of every child ticket under it.",
+  "Rows therefore overlap: a person's hours appear on a task and again on each parent above it. Do not add the Estimation or Actuals columns up — the total would count the same hours more than once.",
+  "Estimation is that person's share of the task's estimate; it is blank when nothing was estimated for their role.",
+  "Complexity and AI usage are not recorded in Redmine yet. Comments is left blank for you to fill in.",
+  "Only the rows that were on screen (after the filters) are included.",
+];
 
 /** Developer/QA performance report. Deliberately NOT in the layout the other exports use:
  * exactly the agreed field list, header on row 1, no scope/title rows — the Comments
@@ -292,6 +316,12 @@ export async function exportPerformanceToExcel(rows: PerformanceRow[], projectNa
   sheet.views = [{ state: "frozen", ySplit: 1 }];
   sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: sheet.columns.length } };
 
+  // The Performance sheet above keeps exactly the agreed layout; how to read it goes on a second sheet.
+  const notes = workbook.addWorksheet("Notes");
+  notes.columns = [{ header: "How to read the Performance sheet", key: "note", width: 120 }];
+  for (const line of PERFORMANCE_NOTES) notes.addRow({ note: line });
+  styleHeaderRow(notes);
+
   await downloadWorkbook(workbook, "redmine_performance", projectName);
 }
 
@@ -320,11 +350,14 @@ export async function exportParentProgressToExcel(
     { header: "Project", key: "project", width: 22 },
     { header: "Child Tickets", key: "total", width: 13 },
     ...statusNames.map((name, i) => ({ header: name, key: `status${i}`, width: Math.max(10, name.length + 2) })),
-    { header: "Closed", key: "closed", width: 9 },
+    { header: "Closed (total)", key: "closed", width: 14 },
     { header: "% Closed", key: "closedPercent", width: 10 },
     { header: "Avg % Done", key: "avgDone", width: 11 },
     { header: "Estimated Hours", key: "estimated", width: 14 },
     { header: "Spent Hours", key: "spent", width: 12 },
+    { header: "Delivered %", key: "delivered", width: 12 },
+    { header: "Hours Left", key: "hoursLeft", width: 11 },
+    { header: "Open Tickets Without Estimate", key: "unestimatedOpen", width: 18 },
   ];
   for (const r of rows) {
     const data: Record<string, string | number> = {
@@ -338,8 +371,11 @@ export async function exportParentProgressToExcel(
       closed: r.closed,
       closedPercent: r.closedPercent === null ? "" : Math.round(r.closedPercent * 10) / 10,
       avgDone: r.avgDonePercent === null ? "" : Math.round(r.avgDonePercent * 10) / 10,
-      estimated: r.estimatedHours ?? "",
-      spent: r.spentHours ?? "",
+      estimated: r.estimatedHours === null ? "" : roundHours(r.estimatedHours),
+      spent: r.spentHours === null ? "" : roundHours(r.spentHours),
+      delivered: r.deliveredPercent === null ? "" : Math.round(r.deliveredPercent * 10) / 10,
+      hoursLeft: r.hoursLeft,
+      unestimatedOpen: r.unestimatedOpen,
     };
     statusNames.forEach((name, i) => {
       data[`status${i}`] = r.byStatus[name] ?? 0;
@@ -380,8 +416,8 @@ export async function exportParentProgressToExcel(
         closed: c.statusIsClosed ? "Yes" : "No",
         assignee: c.assignedTo ?? "",
         done: c.doneRatio,
-        estimated: hours.estimated ?? "",
-        spent: hours.spent ?? "",
+        estimated: hours.estimated === null ? "" : roundHours(hours.estimated),
+        spent: hours.spent === null ? "" : roundHours(hours.spent),
       });
       row.getCell("id").value = { text: `#${c.id}`, hyperlink: `${redmineBaseUrl}/issues/${c.id}` };
     }

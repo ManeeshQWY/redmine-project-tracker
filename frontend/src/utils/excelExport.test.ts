@@ -93,7 +93,9 @@ describe("exportPerformanceToExcel", () => {
     expect(header).toEqual([
       "Name", "Project", "Task", "Complexity", "Estimation", "Actuals", "AI usage", "Bugs reported", "CT Bugs", "Comments",
     ]);
-    expect(wb.worksheets).toHaveLength(1);
+    // the agreed sheet first, untouched; a second sheet only explains how to read it
+    expect(wb.worksheets.map((w) => w.name)).toEqual(["Performance", "Notes"]);
+    expect(String(wb.getWorksheet("Notes")!.getRow(3).getCell(1).value)).toContain("Do not add");
   });
 
   it("fills the data columns and leaves Complexity, AI usage and Comments blank", async () => {
@@ -128,7 +130,8 @@ describe("exportParentProgressToExcel", () => {
     const header = (sheet.getRow(1).values as unknown[]).slice(1);
     expect(header).toEqual([
       "Parent ID", "Subject", "Tracker", "Status", "Assignee", "Project", "Child Tickets",
-      "In Progress", "Closed", "Closed", "% Closed", "Avg % Done", "Estimated Hours", "Spent Hours",
+      "In Progress", "Closed", "Closed (total)", "% Closed", "Avg % Done", "Estimated Hours", "Spent Hours", "Delivered %", "Hours Left",
+      "Open Tickets Without Estimate",
     ]);
     const r = sheet.getRow(2);
     expect(r.getCell(2).value).toBe("Checkout");

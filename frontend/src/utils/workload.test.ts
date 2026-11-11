@@ -142,3 +142,36 @@ describe("projectPeople", () => {
     expect(projectPeople([issue({ id: 1, author: "Some Customer" })], [])).toEqual([]);
   });
 });
+
+describe("remaining work and quietness", () => {
+  const now = new Date("2026-03-20T12:00:00Z");
+  const issues = [
+    issue({ id: 1, tracker: "Epic", assignedTo: "Dev Dan", estimatedHours: 100, spentHours: 5, createdOn: "2026-01-01T00:00:00Z" }), // a parent: its hours are its children's
+    issue({ id: 2, parentId: 1, assignedTo: "Dev Dan", estimatedHours: 10, spentHours: 4, updatedOn: "2026-03-01T00:00:00Z", createdOn: "2026-02-01T00:00:00Z" }),
+    issue({ id: 3, parentId: 1, assignedTo: "Dev Dan", estimatedHours: 3, spentHours: 5, updatedOn: "2026-03-19T00:00:00Z" }), // overrun: nothing left
+    issue({ id: 4, parentId: 1, assignedTo: "Dev Dan", updatedOn: "2026-03-18T00:00:00Z" }), // no estimate
+  ];
+  const dan = () => rowOf(build(issues, {}, [], [], now), "Dev Dan")!;
+
+  function build(i: Issue[], f: Partial<PerformanceFilters>, c: string[], k: string[], n: Date) {
+    return buildWorkload(i, roles, { ...none, ...f }, c, k, n);
+  }
+
+  it("adds up the hours left on leaf tickets only, never below zero, and counts the unestimated", () => {
+    expect(dan().remainingHours).toBe(6); // 10 - 4 on #2, 0 on #3; the Epic's own 100 h is not added
+    expect(dan().unestimated).toBe(1);
+  });
+
+  it("counts open leaf tickets with no update for more than a week", () => {
+    expect(dan().quiet).toBe(1); // #2, updated 19 days ago
+  });
+
+  it("gives the age of the oldest open ticket, parents included", () => {
+    expect(dan().oldestDays).toBe(78); // the Epic, created 1 Jan
+  });
+
+  it("is zero for someone with nothing open", () => {
+    const row = rowOf(build([], {}, [], ["Dev Dee"], now), "Dev Dee")!;
+    expect(row).toMatchObject({ remainingHours: 0, unestimated: 0, quiet: 0, oldestDays: null });
+  });
+});

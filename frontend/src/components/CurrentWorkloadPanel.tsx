@@ -1,11 +1,15 @@
 import { Fragment, useState } from "react";
 import { LoadWindow, windowPhrase } from "../utils/dataWindow";
+import { formatHours } from "../utils/format";
+import { workloadSheets } from "../utils/reportSheets";
 import { summarizeWorkload, WorkloadRow } from "../utils/workload";
+import ExportButton from "./ExportButton";
 
 interface Props {
   rows: WorkloadRow[];
   redmineBaseUrl: string;
   loadWindow: LoadWindow;
+  projectLabel?: string;
   onLoadAllTime?: () => void;
 }
 
@@ -20,7 +24,7 @@ function statusText(byStatus: Record<string, number>): string {
 }
 
 /** Each person's open tickets, of any type — a count per person that expands to the tickets. */
-export default function CurrentWorkloadPanel({ rows, redmineBaseUrl, loadWindow, onLoadAllTime }: Props) {
+export default function CurrentWorkloadPanel({ rows, redmineBaseUrl, loadWindow, projectLabel = "project", onLoadAllTime }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const limitedWindow = loadWindow.kind === "range" || loadWindow.days > 0;
   const summary = summarizeWorkload(rows);
@@ -46,6 +50,9 @@ export default function CurrentWorkloadPanel({ rows, redmineBaseUrl, loadWindow,
   return (
     <details open className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <summary className="cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-200">Current tickets per person</summary>
+      <div className="mt-2 flex justify-end">
+        <ExportButton build={() => workloadSheets(rows, redmineBaseUrl)} filenamePrefix="redmine_current_tickets" projectLabel={projectLabel} label="Export current tickets" disabled={rows.length === 0} />
+      </div>
       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
         Open tickets of every type that the person is on — as Assignee, Additional Assignee or Assigned QA. Closed tickets are not counted.
         The filters above narrow it.
@@ -76,6 +83,10 @@ export default function CurrentWorkloadPanel({ rows, redmineBaseUrl, loadWindow,
               <th className="px-2 py-1.5">Role</th>
               <th className="px-2 py-1.5 text-right">Open tickets</th>
               <th className="px-2 py-1.5 text-right">Bugs</th>
+              <th className="px-2 py-1.5 text-right" title="Estimate minus hours logged, over their open tickets that have nothing nested under them. A + means some tickets have no estimate, so the real figure is higher.">Hours left</th>
+              <th className="px-2 py-1.5 text-right" title="Open tickets with no estimate">No estimate</th>
+              <th className="px-2 py-1.5 text-right" title="Open tickets not updated for more than a week">Quiet 7d+</th>
+              <th className="px-2 py-1.5 text-right" title="Days since their oldest open ticket was created">Oldest (d)</th>
               <th className="px-2 py-1.5">By status</th>
             </tr>
           </thead>
@@ -97,11 +108,22 @@ export default function CurrentWorkloadPanel({ rows, redmineBaseUrl, loadWindow,
                     <td className="px-2 py-1.5">{r.role}</td>
                     <td className="px-2 py-1.5 text-right font-medium tabular-nums">{r.open === 0 ? <span className={dim}>0</span> : r.open}</td>
                     <td className="px-2 py-1.5 text-right tabular-nums">{r.bugs === 0 ? <span className={dim}>0</span> : r.bugs}</td>
+                    <td
+                      className="px-2 py-1.5 text-right tabular-nums"
+                      title={r.unestimated > 0 ? `${r.unestimated} open ticket${r.unestimated === 1 ? " has" : "s have"} no estimate, so this is a lower bound` : undefined}
+                    >
+                      {r.open === 0 ? <span className={dim}>0</span> : `${formatHours(r.remainingHours) || "0"}${r.unestimated > 0 ? "+" : ""}`}
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{r.unestimated === 0 ? <span className={dim}>0</span> : r.unestimated}</td>
+                    <td className={`px-2 py-1.5 text-right tabular-nums ${r.quiet > 0 ? "font-medium text-rose-600 dark:text-rose-400" : ""}`}>
+                      {r.quiet === 0 ? <span className={dim}>0</span> : r.quiet}
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{r.oldestDays === null ? <span className={dim}>—</span> : r.oldestDays}</td>
                     <td className="px-2 py-1.5 text-[11px] text-slate-500 dark:text-slate-400">{statusText(r.byStatus) || <span className={dim}>—</span>}</td>
                   </tr>
                   {open && (
                     <tr className="bg-slate-50/60 dark:bg-slate-800/30">
-                      <td colSpan={5} className="px-6 py-2">
+                      <td colSpan={9} className="px-6 py-2">
                         <ul className="space-y-0.5 text-[11px]">
                           {r.tickets.slice(0, MAX_TICKETS_SHOWN).map((t) => (
                             <li key={t.id} className="flex gap-3">
@@ -124,7 +146,7 @@ export default function CurrentWorkloadPanel({ rows, redmineBaseUrl, loadWindow,
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-2 py-6 text-center text-slate-400 dark:text-slate-500">
+                <td colSpan={9} className="px-2 py-6 text-center text-slate-400 dark:text-slate-500">
                   No one matches the current filters.
                 </td>
               </tr>
@@ -137,7 +159,7 @@ export default function CurrentWorkloadPanel({ rows, redmineBaseUrl, loadWindow,
                 <td className="px-2 py-1.5" />
                 <td className="px-2 py-1.5 text-right tabular-nums" title="Each ticket counted once, even when several people are on it">{summary.tickets.toLocaleString()}</td>
                 <td className="px-2 py-1.5 text-right tabular-nums">{summary.bugs.toLocaleString()}</td>
-                <td className="px-2 py-1.5" />
+                <td className="px-2 py-1.5" colSpan={5} />
               </tr>
             </tfoot>
           )}

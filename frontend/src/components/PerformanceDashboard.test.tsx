@@ -621,7 +621,9 @@ describe("PerformanceDashboard current tickets per person", () => {
     expect(dan[1].textContent).toBe("Developer");
     expect(dan[2].textContent).toBe("3"); // #1, #2 and #4 — the closed #3 is not counted
     expect(dan[3].textContent).toBe("1"); // the bug
-    expect(dan[4].textContent).toBe("New 2 · In Progress 1"); // most first
+    expect(dan[4].textContent).toBe("0+"); // hours left: none of these tickets has an estimate, so it is a lower bound
+    expect(dan[5].textContent).toBe("3"); // no estimate
+    expect(dan[8].textContent).toBe("New 2 · In Progress 1"); // most first
     expect(cellsOf("Dev Free")[2].textContent).toBe("0");
     expect(within(workloadTable()).queryByText("Dev Outsider")).not.toBeInTheDocument();
     expect(within(workloadTable()).queryByText("Quinn QA")).not.toBeInTheDocument(); // in the master list, not in these tickets

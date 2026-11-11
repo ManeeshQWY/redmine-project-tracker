@@ -28,6 +28,7 @@ interface Props {
   redmineBaseUrl: string;
   projectLabel: string;
   loadWindow: LoadWindow;
+  devDoneCounts?: boolean; // does "Dev Completed" count as delivered (the Overview switch)
   onLoadAllTime: () => void;
 }
 
@@ -70,7 +71,7 @@ function summaryText(row: ParentProgressRow, series: StatusSeries[]): string {
     .join(" · ");
 }
 
-export default function ParentProgressPanel({ issues, statuses, trackers, redmineBaseUrl, projectLabel, loadWindow, onLoadAllTime }: Props) {
+export default function ParentProgressPanel({ issues, statuses, trackers, redmineBaseUrl, projectLabel, loadWindow, devDoneCounts = true, onLoadAllTime }: Props) {
   const { isDark } = useTheme();
   const [scope, setScope] = useState<ChildScope>("all");
   const [search, setSearch] = useState("");
@@ -81,7 +82,7 @@ export default function ParentProgressPanel({ issues, statuses, trackers, redmin
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [exporting, setExporting] = useState(false);
 
-  const allRows = useMemo(() => buildParentProgress(issues, scope), [issues, scope]);
+  const allRows = useMemo(() => buildParentProgress(issues, scope, devDoneCounts), [issues, scope, devDoneCounts]);
   const rows = useMemo(
     () => sortParentProgress(filterParentProgress(allRows, { trackers, search, state, topLevelOnly }), sort),
     [allRows, trackers, search, state, topLevelOnly, sort]
@@ -224,9 +225,11 @@ export default function ParentProgressPanel({ issues, statuses, trackers, redmin
                 <th className="px-2 py-1.5 text-right">Child tickets</th>
                 <th className="px-2 py-1.5">By status</th>
                 <th className="px-2 py-1.5 text-right">% closed</th>
+                <th className="px-2 py-1.5 text-right" title={`Share of the tickets underneath (leaf tickets, any depth) that are delivered — closed${devDoneCounts ? ", or Dev Completed and later" : ""}. Change the Dev Completed switch on Overview.`}>Delivered</th>
                 <th className="px-2 py-1.5 text-right" title="Average of the child tickets' own % done">Avg % done</th>
                 <th className="px-2 py-1.5 text-right" title="Redmine's total for the parent, including all its children">Est. (h)</th>
                 <th className="px-2 py-1.5 text-right" title="Redmine's total time spent on the parent, including all its children">Spent (h)</th>
+                <th className="px-2 py-1.5 text-right" title="Estimate minus hours logged on the open tickets underneath, never below zero">Hours left</th>
               </tr>
             </thead>
             <tbody>
@@ -248,7 +251,7 @@ export default function ParentProgressPanel({ issues, statuses, trackers, redmin
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-2 py-8 text-center text-slate-400 dark:text-slate-500">
+                  <td colSpan={11} className="px-2 py-8 text-center text-slate-400 dark:text-slate-500">
                     No parent tickets to show.
                   </td>
                 </tr>
@@ -318,13 +321,20 @@ function ParentRows({
             <div className="h-full rounded-full bg-brand-600" style={{ width: `${row.closedPercent ?? 0}%` }} />
           </div>
         </td>
+        <td className="px-2 py-2 text-right tabular-nums">{pct(row.deliveredPercent)}</td>
         <td className="px-2 py-2 text-right tabular-nums">{pct(row.avgDonePercent)}</td>
         <td className="px-2 py-2 text-right tabular-nums">{row.estimatedHours === null ? <span className="text-slate-300 dark:text-slate-600">—</span> : formatHours(row.estimatedHours)}</td>
         <td className="px-2 py-2 text-right tabular-nums">{row.spentHours === null ? <span className="text-slate-300 dark:text-slate-600">—</span> : formatHours(row.spentHours)}</td>
+        <td
+          className="px-2 py-2 text-right tabular-nums"
+          title={row.unestimatedOpen > 0 ? `${row.unestimatedOpen} open ticket${row.unestimatedOpen === 1 ? " has" : "s have"} no estimate, so this is a lower bound` : undefined}
+        >
+          {`${formatHours(row.hoursLeft) || "0"}${row.unestimatedOpen > 0 ? "+" : ""}`}
+        </td>
       </tr>
       {open && (
         <tr className="bg-slate-50/60 dark:bg-slate-800/30">
-          <td colSpan={9} className="px-4 py-3">
+          <td colSpan={11} className="px-4 py-3">
             <table className="w-full text-left text-[11px]">
               <thead className="text-slate-500 dark:text-slate-400">
                 <tr>

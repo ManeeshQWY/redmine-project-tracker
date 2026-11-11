@@ -11,6 +11,8 @@ import {
   UserAssignedTicket,
 } from "../utils/aggregations";
 import { blank, formatDate, formatHours } from "../utils/format";
+import { userTicketsSheets } from "../utils/reportSheets";
+import ExportButton from "./ExportButton";
 
 type SortKey = "age" | "createdOn" | "dueDate";
 
@@ -47,7 +49,7 @@ function MiniBreakdown({ title, rows }: { title: string; rows: { key: string; co
 /** `issues` arrives already scoped by the app's global filters (project + tracker, etc.
  * — see App.tsx's filteredIssues) — this panel doesn't need its own tracker filter on
  * top of that, it just reflects whatever's globally selected. */
-export default function UserAssignmentPanel({ issues, redmineBaseUrl }: { issues: Issue[]; redmineBaseUrl: string }) {
+export default function UserAssignmentPanel({ issues, redmineBaseUrl, projectLabel = "project" }: { issues: Issue[]; redmineBaseUrl: string; projectLabel?: string }) {
   const [selectedUser, setSelectedUser] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("age");
 
@@ -119,6 +121,13 @@ export default function UserAssignmentPanel({ issues, redmineBaseUrl }: { issues
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Assigned Open Tickets</h3>
+              <ExportButton
+                build={() => userTicketsSheets(selectedUser, sorted.map((s) => ({ issue: s.issue, assignmentType: s.assignmentType, age: s.age })), redmineBaseUrl)}
+                filenamePrefix="redmine_open_tickets"
+                projectLabel={projectLabel}
+                label="Export open tickets"
+                disabled={sorted.length === 0}
+              />
               <select className={selectCls} value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
                 <option value="age">Sort by Ticket Age (oldest first)</option>
                 <option value="createdOn">Sort by Created On (newest first)</option>

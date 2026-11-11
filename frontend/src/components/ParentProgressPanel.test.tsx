@@ -82,8 +82,10 @@ describe("ParentProgressPanel", () => {
     expect(cells[3]).toBe("4"); // four tickets under the Epic
     expect(cells[4]).toContain("New 1 · In Progress 1 · Closed 2"); // by status, in Redmine's order
     expect(cells[5]).toContain("50%"); // 2 of 4 closed
-    expect(cells[7]).toBe("40");
-    expect(cells[8]).toBe("12");
+    expect(cells[6]).toContain("50%"); // delivered: the two closed tickets of the four underneath
+    expect(cells[8]).toBe("40");
+    expect(cells[9]).toBe("12");
+    expect(cells[10]).toBe("0+"); // hours left: nothing underneath is estimated, so zero is only a lower bound
   });
 
   it("summarises the parents shown, counting a ticket once", () => {

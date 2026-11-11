@@ -607,6 +607,9 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
             >
               {exporting ? "Exporting…" : `Export to Excel (${sortedRows.length.toLocaleString()} rows)`}
             </button>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400" title="A parent task includes its children, so a person appears on the task and again on each parent above it. The export has a Notes sheet that says the same.">
+              Rows overlap — do not add the columns up
+            </span>
             <button onClick={() => load(true)} disabled={loading} className={buttonCls}>
               {loading ? "Refreshing…" : "Refresh Time Data"}
             </button>
@@ -752,7 +755,7 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
 
       {roles && <RoleListNotices roles={roles} unknownNames={unknownNames} />}
 
-      <CurrentWorkloadPanel rows={workload} redmineBaseUrl={redmineBaseUrl} loadWindow={loadWindow} onLoadAllTime={onLoadAllTime} />
+      <CurrentWorkloadPanel rows={workload} redmineBaseUrl={redmineBaseUrl} loadWindow={loadWindow} projectLabel={projectLabel || projectIdentifier} onLoadAllTime={onLoadAllTime} />
 
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="max-h-[640px] overflow-auto">
