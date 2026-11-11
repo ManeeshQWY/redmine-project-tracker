@@ -61,8 +61,8 @@ export default function FiltersBar({ issues, filters, onChange }: Props) {
   const set = <K extends keyof TicketFilters>(key: K, value: TicketFilters[K]) => onChange({ ...filters, [key]: value });
 
   const selectCls =
-    "rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
-  const labelCls = "text-[11px] font-medium text-slate-500 dark:text-slate-400";
+    "rounded-md border border-ctl bg-white px-2 py-1.5 text-xs text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
+  const labelCls = "text-xs font-medium text-slate-500 dark:text-slate-400";
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">

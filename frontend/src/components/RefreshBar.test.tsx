@@ -15,6 +15,6 @@ describe("RefreshBar", () => {
   it("can hide the export button (the Performance tab has its own filter-aware export)", () => {
     render(<RefreshBar {...base} onExport={() => {}} showExport={false} />);
     expect(screen.queryByRole("button", { name: /export tickets/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /refresh data/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /refresh/i })).toBeInTheDocument();
   });
 });

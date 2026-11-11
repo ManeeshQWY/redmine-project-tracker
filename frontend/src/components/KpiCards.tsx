@@ -6,40 +6,64 @@ interface Props {
   issues: Issue[];
 }
 
-function Card({ label, value, accent, hint }: { label: string; value: number; accent: string; hint?: string }) {
+const tileCls = "min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none";
+
+/** One number and what it counts. `alert` turns it red when above zero: it is a count of things that should be none. */
+function Tile({ label, value, hint, alert = false }: { label: string; value: number; hint?: string; alert?: boolean }) {
+  const bad = alert && value > 0;
   return (
-    <div title={hint} className="relative min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className={`absolute inset-x-0 top-0 h-0.5 ${accent}`} />
-      <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</div>
-      <div className="mt-1.5 text-2xl font-semibold text-slate-800 dark:text-slate-100">{value.toLocaleString()}</div>
+    <div className={tileCls}>
+      <div className="text-xs font-medium text-slate-600 dark:text-slate-400">{label}</div>
+      <div
+        className={`mt-1 text-[28px] font-semibold leading-8 tracking-tight ${bad ? "text-rose-700 dark:text-rose-300" : "text-slate-900 dark:text-slate-50"}`}
+      >
+        {value.toLocaleString()}
+      </div>
+      {hint && <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</div>}
     </div>
   );
 }
 
+/** What needs attention first, then how big the work is. */
 export default function KpiCards({ issues }: Props) {
-  const total = issues.length;
   const closed = countClosed(issues);
-  const notClosed = countNotClosed(issues);
-  const bugs = issues.filter((i) => i.tracker === "Bug").length;
-  const features = issues.filter((i) => i.tracker === "Feature").length;
+  const open = countNotClosed(issues);
   const highPriority = issues.filter((i) => i.priority === "High" || i.priority === "Urgent" || i.priority === "Immediate").length;
   const inProgress = issues.filter((i) => i.status.toLowerCase().includes("progress")).length;
   const quick = quickCounts(issues, new Date());
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-      <Card label="Total Tickets" value={total} accent="bg-slate-400" />
-      <Card label="Closed Tickets" value={closed} accent="bg-emerald-500" />
-      <Card label="Not Closed" value={notClosed} accent="bg-amber-500" />
-      <Card label="Bugs" value={bugs} accent="bg-rose-500" />
-      <Card label="Features" value={features} accent="bg-brand-500" />
-      <Card label="High Priority" value={highPriority} accent="bg-rose-500" />
-      <Card label="In Progress" value={inProgress} accent="bg-brand-500" />
-      <Card label="Unassigned" value={quick.unassigned} accent="bg-amber-500" hint="Open tickets (nothing nested under them) with no assignee" />
-      <Card label="No Estimate" value={quick.noEstimate} accent="bg-amber-500" hint="Open tickets (nothing nested under them) with no estimated hours" />
-      <Card label="Overdue" value={quick.overdue} accent="bg-rose-500" hint="Open tickets past their due date — only tickets with a due date can be overdue" />
-      <Card label="Created (7 days)" value={quick.created7} accent="bg-brand-500" />
-      <Card label="Closed (7 days)" value={quick.closed7} accent="bg-emerald-500" />
+    <div className="space-y-6">
+      <section aria-labelledby="kpi-attention" className="space-y-2">
+        <h3 id="kpi-attention" className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          Needs attention
+        </h3>
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <Tile label="Overdue" value={quick.overdue} alert hint="Open and past the due date" />
+          <Tile label="Unassigned" value={quick.unassigned} alert hint="Open, with no assignee" />
+          <Tile label="No estimate" value={quick.noEstimate} alert hint="Open, with no estimated hours" />
+          <Tile label="High priority" value={highPriority} hint="High, urgent or immediate" />
+        </div>
+      </section>
+
+      <section aria-labelledby="kpi-volume" className="space-y-2">
+        <h3 id="kpi-volume" className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          Volume
+        </h3>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <Tile label="Total tickets" value={issues.length} />
+          <Tile label="Open" value={open} hint="Not in a closed status" />
+          <Tile label="Closed" value={closed} hint="Status marked closed in Redmine" />
+          <Tile label="In progress" value={inProgress} />
+          <Tile label="Created (7 days)" value={quick.created7} />
+          <Tile label="Closed (7 days)" value={quick.closed7} />
+        </div>
+        {closed === 0 && issues.length > 0 && (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            No ticket has a closed status here. Delivery progress above counts &ldquo;Dev Completed&rdquo; and later as delivered.
+          </p>
+        )}
+      </section>
     </div>
   );
 }

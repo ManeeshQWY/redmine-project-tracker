@@ -62,7 +62,7 @@ describe("KpiCards quick counts", () => {
     render(<KpiCards issues={ISSUES} />);
     const value = (label: string) => screen.getByText(label).nextElementSibling;
     expect(value("Unassigned")).toHaveTextContent("1"); // #5
-    expect(value("No Estimate")).toHaveTextContent("1");
+    expect(value("No estimate")).toHaveTextContent("1");
     expect(value("Overdue")).toHaveTextContent("0");
   });
 });

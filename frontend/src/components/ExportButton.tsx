@@ -11,7 +11,7 @@ interface Props {
 }
 
 const buttonCls =
-  "rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700";
+  "rounded-md border border-ctl bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700";
 
 /** Downloads the screen's report as an Excel workbook. */
 export default function ExportButton({ build, filenamePrefix, projectLabel, label = "Export to Excel", disabled }: Props) {
@@ -35,7 +35,7 @@ export default function ExportButton({ build, filenamePrefix, projectLabel, labe
       <button type="button" onClick={run} disabled={disabled || busy} className={buttonCls}>
         {busy ? "Exporting…" : label}
       </button>
-      {failed && <span className="text-[11px] text-rose-600 dark:text-rose-400">The export failed — try again.</span>}
+      {failed && <span className="text-xs text-rose-600 dark:text-rose-400">The export failed — try again.</span>}
     </span>
   );
 }

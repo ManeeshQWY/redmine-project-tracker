@@ -40,7 +40,7 @@ export default function StalenessPanel({ issues, redmineBaseUrl, projectLabel = 
             setBy(e.target.value as StalenessBy);
             setCell(null);
           }}
-          className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+          className="rounded-md border border-ctl bg-white px-2 py-1 text-xs text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
         >
           <option value="stage">By stage</option>
           <option value="assignee">By assignee</option>
@@ -53,17 +53,17 @@ export default function StalenessPanel({ issues, redmineBaseUrl, projectLabel = 
       </p>
 
       {rows.length === 0 ? (
-        <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">No open tickets.</p>
+        <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">No open tickets.</p>
       ) : (
         <div className="overflow-auto">
           <table className="w-full text-left text-xs" aria-label="Days since last update">
             <thead className="bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               <tr>
-                <th className="px-2 py-1.5">{by === "stage" ? "Stage" : "Assignee"}</th>
+                <th scope="col" className="px-2 py-1.5">{by === "stage" ? "Stage" : "Assignee"}</th>
                 {STALE_BUCKETS.map((b) => (
-                  <th key={b.label} className="px-2 py-1.5 text-right">{b.label}</th>
+                  <th scope="col" key={b.label} className="px-2 py-1.5 text-right">{b.label}</th>
                 ))}
-                <th className="px-2 py-1.5 text-right">Open</th>
+                <th scope="col" className="px-2 py-1.5 text-right">Open</th>
               </tr>
             </thead>
             <tbody>
@@ -76,7 +76,7 @@ export default function StalenessPanel({ issues, redmineBaseUrl, projectLabel = 
                     return (
                       <td key={b} className="px-2 py-1 text-right">
                         {list.length === 0 ? (
-                          <span className="text-slate-300 dark:text-slate-600">0</span>
+                          <span className="text-slate-400 dark:text-slate-500">0</span>
                         ) : (
                           <button
                             onClick={() => setCell(active ? null : { row: r.key, bucket: b })}
@@ -111,10 +111,10 @@ export default function StalenessPanel({ issues, redmineBaseUrl, projectLabel = 
       {cell && selectedRow && tickets.length > 0 && (
         <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-800">
           <div className="mb-1 text-xs font-semibold text-slate-700 dark:text-slate-200">
-            {selectedRow.label} — {STALE_BUCKETS[cell.bucket].label} <span className="font-normal text-slate-400">({tickets.length})</span>
+            {selectedRow.label} — {STALE_BUCKETS[cell.bucket].label} <span className="font-normal text-slate-500 dark:text-slate-400">({tickets.length})</span>
           </div>
           <div className="max-h-72 overflow-auto">
-            <table className="w-full text-left text-[11px]">
+            <table className="w-full text-left text-xs">
               <tbody>
                 {tickets.slice(0, MAX_SHOWN).map((i) => (
                   <tr key={i.id} className="border-t border-slate-100 dark:border-slate-800">
@@ -130,7 +130,7 @@ export default function StalenessPanel({ issues, redmineBaseUrl, projectLabel = 
               </tbody>
             </table>
             {tickets.length > MAX_SHOWN && (
-              <p className="py-2 text-center text-[11px] text-slate-400 dark:text-slate-500">Showing the first {MAX_SHOWN} of {tickets.length}.</p>
+              <p className="py-2 text-center text-xs text-slate-500 dark:text-slate-400">Showing the first {MAX_SHOWN} of {tickets.length}.</p>
             )}
           </div>
         </div>

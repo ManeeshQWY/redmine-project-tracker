@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Issue } from "../types/issue";
 import { aggregateClosedByMonthAndTracker, MonthTrackerRow } from "../utils/aggregations";
-import { CHART_COLORS, chartTheme, useTheme } from "../theme";
+import { chartTheme, seriesColor, useTheme } from "../theme";
 
 interface MonthTooltipProps {
   active?: boolean;
@@ -24,7 +24,7 @@ function MonthTooltip({ active, payload, label, t }: MonthTooltipProps) {
         .filter((p) => (p.value ?? 0) > 0)
         .map((p) => (
           <div key={p.dataKey as string} className="flex items-center justify-between gap-4">
-            <span style={{ color: p.color }}>{p.dataKey}</span>
+            <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2 w-2 rounded-full" style={{ background: p.color }} />{p.dataKey}</span>
             <span>{p.value}</span>
           </div>
         ))}
@@ -68,14 +68,14 @@ export default function ClosedTicketsTrendPanel({ issues }: { issues: Issue[] })
   const chartData = chartRows.map((r) => ({ monthLabel: r.monthLabel, total: r.total, ...r.byTracker }));
 
   const selectCls =
-    "rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
+    "rounded-md border border-ctl bg-white px-2 py-1.5 text-xs text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
 
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-slate-500 dark:text-slate-400">From Month</label>
+            <label className="text-xs font-medium text-slate-500 dark:text-slate-400">From Month</label>
             <select className={selectCls} value={fromMonth} onChange={(e) => setFromMonth(e.target.value)}>
               <option value="">Earliest</option>
               {allMonths.map((m) => (
@@ -84,7 +84,7 @@ export default function ClosedTicketsTrendPanel({ issues }: { issues: Issue[] })
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-slate-500 dark:text-slate-400">To Month</label>
+            <label className="text-xs font-medium text-slate-500 dark:text-slate-400">To Month</label>
             <select className={selectCls} value={toMonth} onChange={(e) => setToMonth(e.target.value)}>
               <option value="">Latest</option>
               {allMonths.map((m) => (
@@ -103,25 +103,25 @@ export default function ClosedTicketsTrendPanel({ issues }: { issues: Issue[] })
               Clear Month Range
             </button>
           )}
-          <span className="text-[11px] text-slate-400 dark:text-slate-500">Tracker filter is global — see the bar above the tabs.</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">Tracker filter is global — see the bar above the tabs.</span>
         </div>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Closed Tickets by Month</h3>
         {rows.length === 0 ? (
-          <p className="text-sm text-slate-400 dark:text-slate-500">No closed tickets in the current view.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">No closed tickets in the current view.</p>
         ) : (
           <div style={{ width: "100%", height: 280 }}>
             <ResponsiveContainer>
               <BarChart data={chartData} margin={{ left: 8, right: 24, top: 4, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={t.grid} />
-                <XAxis dataKey="monthLabel" tick={{ fontSize: 11, fill: t.tick }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: t.tick }} />
+                <CartesianGrid vertical={false} stroke={t.grid} />
+                <XAxis dataKey="monthLabel" tick={{ fontSize: 12, fill: t.tick }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: t.tick }} />
                 <Tooltip content={(props) => <MonthTooltip {...(props as unknown as MonthTooltipProps)} t={t} />} />
-                <Legend wrapperStyle={{ fontSize: 12, color: t.tick }} />
-                {trackers.map((tracker, idx) => (
-                  <Bar key={tracker} dataKey={tracker} stackId="closed" fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} formatter={(v) => <span style={{ color: t.tooltipText }}>{v}</span>} />
+                {trackers.map((tracker) => (
+                  <Bar key={tracker} dataKey={tracker} stackId="closed" fill={seriesColor(tracker, isDark)} stroke={t.surface} strokeWidth={2} maxBarSize={44} isAnimationActive={false} />
                 ))}
               </BarChart>
             </ResponsiveContainer>
@@ -135,11 +135,11 @@ export default function ClosedTicketsTrendPanel({ issues }: { issues: Issue[] })
           <table className="w-full text-left text-xs">
             <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               <tr>
-                <th className="px-2 py-1.5">Month</th>
+                <th scope="col" className="px-2 py-1.5">Month</th>
                 {trackers.map((tracker) => (
-                  <th key={tracker} className="px-2 py-1.5 text-right">{tracker}</th>
+                  <th scope="col" key={tracker} className="px-2 py-1.5 text-right">{tracker}</th>
                 ))}
-                <th className="px-2 py-1.5 text-right font-semibold">Total</th>
+                <th scope="col" className="px-2 py-1.5 text-right font-semibold">Total</th>
               </tr>
             </thead>
             <tbody>
@@ -154,7 +154,7 @@ export default function ClosedTicketsTrendPanel({ issues }: { issues: Issue[] })
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={trackers.length + 2} className="px-2 py-6 text-center text-slate-400 dark:text-slate-500">
+                  <td colSpan={trackers.length + 2} className="px-2 py-6 text-center text-slate-500 dark:text-slate-400">
                     No closed tickets in the current view.
                   </td>
                 </tr>

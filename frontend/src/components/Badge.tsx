@@ -19,7 +19,7 @@ export function StatusBadge({ status, isClosed }: StatusBadgeProps) {
     cls = "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
   }
 
-  return <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${cls}`}>{status}</span>;
+  return <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${cls}`}>{status}</span>;
 }
 
 export function PriorityBadge({ priority }: { priority: string }) {
@@ -35,5 +35,5 @@ export function PriorityBadge({ priority }: { priority: string }) {
     cls = "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400";
   }
 
-  return <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${cls}`}>{priority}</span>;
+  return <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${cls}`}>{priority}</span>;
 }

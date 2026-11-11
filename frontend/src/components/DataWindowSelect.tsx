@@ -32,7 +32,7 @@ export default function DataWindowSelect({ window, onChange, disabled }: Props) 
   const selectValue = showRange ? CUSTOM : String(window.kind === "days" ? window.days : 30);
   const valid = isValidRange(from, to);
   const dateCls =
-    "rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
+    "rounded-lg border border-ctl bg-white px-2 py-1.5 text-sm text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
 
   function choose(value: string) {
     if (value === CUSTOM) {
@@ -53,7 +53,7 @@ export default function DataWindowSelect({ window, onChange, disabled }: Props) 
         value={selectValue}
         disabled={disabled}
         onChange={(e) => choose(e.target.value)}
-        className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+        className="rounded-lg border border-ctl bg-white px-2.5 py-1.5 text-sm text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
       >
         {DAY_OPTIONS.map((o) => (
           <option key={o.days} value={o.days}>

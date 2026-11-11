@@ -16,7 +16,7 @@ interface Props {
 }
 
 const selectCls =
-  "rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
+  "rounded-md border border-ctl bg-white px-2 py-1 text-xs text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
 
 interface TipProps {
   active?: boolean;
@@ -33,7 +33,7 @@ function FlowTooltip({ active, label, payload, t }: TipProps) {
       <div className="mb-1 font-medium">{label}</div>
       {payload.map((p) => (
         <div key={p.dataKey} className="flex items-center justify-between gap-4">
-          <span style={{ color: p.color }}>{p.name}</span>
+          <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2 w-2 rounded-full" style={{ background: p.color }} />{p.name}</span>
           <span>{p.value}</span>
         </div>
       ))}
@@ -94,12 +94,12 @@ export default function FlowPanel({ issues, allIssues, projectLabel = "project",
           <table className="w-full text-left text-xs" aria-label="Flow by period">
             <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               <tr>
-                <th className="px-2 py-1.5">Period</th>
-                <th className="px-2 py-1.5 text-right">Created</th>
-                <th className="px-2 py-1.5 text-right">Closed</th>
-                <th className="px-2 py-1.5 text-right">Open at end</th>
-                <th className="px-2 py-1.5 text-right" title="Median days from created to closed, for tickets closed in the period">Median days to close</th>
-                <th className="px-2 py-1.5 text-right" title="9 in 10 tickets closed in the period took no longer than this">Slowest 10% start at</th>
+                <th scope="col" className="px-2 py-1.5">Period</th>
+                <th scope="col" className="px-2 py-1.5 text-right">Created</th>
+                <th scope="col" className="px-2 py-1.5 text-right">Closed</th>
+                <th scope="col" className="px-2 py-1.5 text-right">Open at end</th>
+                <th scope="col" className="px-2 py-1.5 text-right" title="Median days from created to closed, for tickets closed in the period">Median days to close</th>
+                <th scope="col" className="px-2 py-1.5 text-right" title="9 in 10 tickets closed in the period took no longer than this">Slowest 10% start at</th>
               </tr>
             </thead>
             <tbody>
@@ -121,16 +121,16 @@ export default function FlowPanel({ issues, allIssues, projectLabel = "project",
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Work in progress per person</h3>
-          <label className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+          <label className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
             Flag above
-            <NumberInput value={wipLimit} min={1} max={99} integer onCommit={setWipLimit} className="w-14 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200" aria-label="Flag above" />
+            <NumberInput value={wipLimit} min={1} max={99} integer onCommit={setWipLimit} className="w-14 rounded-md border border-ctl bg-white px-2 py-1 text-xs text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200" aria-label="Flag above" />
           </label>
         </div>
         <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
           Tickets currently In Progress (with nothing nested under them). Someone with many at once is usually switching, not finishing.
         </p>
         {wip.length === 0 ? (
-          <p className="py-4 text-center text-sm text-slate-400 dark:text-slate-500">Nothing is in progress.</p>
+          <p className="py-4 text-center text-sm text-slate-500 dark:text-slate-400">Nothing is in progress.</p>
         ) : (
           <table className="w-full text-left text-xs" aria-label="Work in progress per person">
             <tbody>
@@ -138,7 +138,7 @@ export default function FlowPanel({ issues, allIssues, projectLabel = "project",
                 <tr key={w.assignee} className="border-t border-slate-100 dark:border-slate-800">
                   <td className="px-2 py-1.5">{w.assignee}</td>
                   <td className={`w-24 px-2 py-1.5 text-right tabular-nums ${w.overLimit ? "font-semibold text-rose-600 dark:text-rose-400" : ""}`}>{w.active}</td>
-                  <td className="w-28 px-2 py-1.5 text-[11px] text-rose-600 dark:text-rose-400">{w.overLimit ? "over the limit" : ""}</td>
+                  <td className="w-28 px-2 py-1.5 text-xs text-rose-600 dark:text-rose-400">{w.overLimit ? "over the limit" : ""}</td>
                 </tr>
               ))}
             </tbody>

@@ -14,7 +14,7 @@ const DIM_LABEL: Record<BreakdownDim, string> = {
 function StatCard({ label, value }: { label: string; value: number | null }) {
   return (
     <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-center dark:border-slate-700 dark:bg-slate-800">
-      <div className="text-[11px] uppercase text-slate-500 dark:text-slate-400">{label}</div>
+      <div className="text-xs uppercase text-slate-500 dark:text-slate-400">{label}</div>
       <div className="text-lg font-semibold text-slate-800 dark:text-slate-100">{value === null ? "—" : `${value.toFixed(1)}d`}</div>
     </div>
   );
@@ -49,7 +49,7 @@ export default function ResolutionTimePanel({ issues }: { issues: Issue[] }) {
       <div className="mb-2 flex items-center gap-2">
         <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Breakdown by</label>
         <select
-          className="rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800"
+          className="rounded border border-ctl bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800"
           value={dim}
           onChange={(e) => setDim(e.target.value as BreakdownDim)}
         >
@@ -62,12 +62,12 @@ export default function ResolutionTimePanel({ issues }: { issues: Issue[] }) {
         <table className="w-full text-left text-xs">
           <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <tr>
-              <th className="px-2 py-1.5">{DIM_LABEL[dim]}</th>
-              <th className="px-2 py-1.5 text-right">Avg (d)</th>
-              <th className="px-2 py-1.5 text-right">Median (d)</th>
-              <th className="px-2 py-1.5 text-right">Min (d)</th>
-              <th className="px-2 py-1.5 text-right">Max (d)</th>
-              <th className="px-2 py-1.5 text-right">Sample</th>
+              <th scope="col" className="px-2 py-1.5">{DIM_LABEL[dim]}</th>
+              <th scope="col" className="px-2 py-1.5 text-right">Avg (d)</th>
+              <th scope="col" className="px-2 py-1.5 text-right">Median (d)</th>
+              <th scope="col" className="px-2 py-1.5 text-right">Min (d)</th>
+              <th scope="col" className="px-2 py-1.5 text-right">Max (d)</th>
+              <th scope="col" className="px-2 py-1.5 text-right">Sample</th>
             </tr>
           </thead>
           <tbody>

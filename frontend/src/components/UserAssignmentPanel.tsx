@@ -23,7 +23,7 @@ function AssignmentTypeBadge({ type }: { type: UserAssignedTicket["assignmentTyp
       : type === "Main Assignee"
         ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
         : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
-  return <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${cls}`}>{type}</span>;
+  return <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${cls}`}>{type}</span>;
 }
 
 function MiniBreakdown({ title, rows }: { title: string; rows: { key: string; count: number }[] }) {
@@ -31,7 +31,7 @@ function MiniBreakdown({ title, rows }: { title: string; rows: { key: string; co
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{title}</h4>
       {rows.length === 0 ? (
-        <p className="text-xs text-slate-400 dark:text-slate-500">No open tickets.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">No open tickets.</p>
       ) : (
         <ul className="space-y-1 text-xs">
           {rows.map((r) => (
@@ -75,7 +75,7 @@ export default function UserAssignmentPanel({ issues, redmineBaseUrl, projectLab
   const byVersion = useMemo(() => aggregateByTargetVersion(assignedIssues), [assignedIssues]);
 
   const selectCls =
-    "rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
+    "rounded-md border border-ctl bg-white px-2 py-1.5 text-xs text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
 
   return (
     <div className="space-y-4">
@@ -92,7 +92,7 @@ export default function UserAssignmentPanel({ issues, redmineBaseUrl, projectLab
       </div>
 
       {!selectedUser && (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+        <div className="rounded-lg border border-dashed border-ctl bg-white p-10 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
           Select a user above to see their currently open assigned tickets (as Main Assignee or Additional Assignee).
         </div>
       )}
@@ -110,7 +110,7 @@ export default function UserAssignmentPanel({ issues, redmineBaseUrl, projectLab
             </div>
             <div className="flex-1 min-w-[140px] rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
               <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Main Assignee</div>
-              <div className="mt-1 text-2xl font-semibold text-brand-600 dark:text-brand-500">{summary.mainCount}</div>
+              <div className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-50">{summary.mainCount}</div>
             </div>
             <div className="flex-1 min-w-[140px] rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
               <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Additional Assignee</div>
@@ -139,26 +139,26 @@ export default function UserAssignmentPanel({ issues, redmineBaseUrl, projectLab
               <table className="w-full min-w-[1200px] text-left text-xs">
                 <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                   <tr>
-                    <th className="px-2 py-1.5">ID</th>
-                    <th className="px-2 py-1.5">Subject</th>
-                    <th className="px-2 py-1.5">Tracker</th>
-                    <th className="px-2 py-1.5">Status</th>
-                    <th className="px-2 py-1.5">Priority</th>
-                    <th className="px-2 py-1.5">Main Assignee</th>
-                    <th className="px-2 py-1.5">Additional Assignee</th>
-                    <th className="px-2 py-1.5">Assignment Type</th>
-                    <th className="px-2 py-1.5">Target Version</th>
-                    <th className="px-2 py-1.5">Created On</th>
-                    <th className="px-2 py-1.5">Due Date</th>
-                    <th className="px-2 py-1.5 text-right">Age (days)</th>
-                    <th className="px-2 py-1.5 text-right">Est. Hours</th>
-                    <th className="px-2 py-1.5 text-right">Total Spent</th>
+                    <th scope="col" className="px-2 py-1.5">ID</th>
+                    <th scope="col" className="px-2 py-1.5">Subject</th>
+                    <th scope="col" className="px-2 py-1.5">Tracker</th>
+                    <th scope="col" className="px-2 py-1.5">Status</th>
+                    <th scope="col" className="px-2 py-1.5">Priority</th>
+                    <th scope="col" className="px-2 py-1.5">Main Assignee</th>
+                    <th scope="col" className="px-2 py-1.5">Additional Assignee</th>
+                    <th scope="col" className="px-2 py-1.5">Assignment Type</th>
+                    <th scope="col" className="px-2 py-1.5">Target Version</th>
+                    <th scope="col" className="px-2 py-1.5">Created On</th>
+                    <th scope="col" className="px-2 py-1.5">Due Date</th>
+                    <th scope="col" className="px-2 py-1.5 text-right">Age (days)</th>
+                    <th scope="col" className="px-2 py-1.5 text-right">Est. Hours</th>
+                    <th scope="col" className="px-2 py-1.5 text-right">Total Spent</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sorted.map(({ issue, assignmentType, age }) => (
                     <tr key={issue.id} className="border-t border-slate-100 dark:border-slate-800">
-                      <td className="px-2 py-1.5 font-medium text-brand-700 dark:text-brand-500">
+                      <td className="px-2 py-1.5 font-medium text-brand-700 dark:text-brand-400">
                         <a href={`${redmineBaseUrl}/issues/${issue.id}`} target="_blank" rel="noreferrer noopener" className="hover:underline">
                           #{issue.id}
                         </a>
@@ -180,7 +180,7 @@ export default function UserAssignmentPanel({ issues, redmineBaseUrl, projectLab
                   ))}
                   {sorted.length === 0 && (
                     <tr>
-                      <td colSpan={14} className="px-2 py-6 text-center text-slate-400 dark:text-slate-500">
+                      <td colSpan={14} className="px-2 py-6 text-center text-slate-500 dark:text-slate-400">
                         No open tickets assigned to {selectedUser}.
                       </td>
                     </tr>

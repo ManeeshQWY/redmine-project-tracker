@@ -235,14 +235,14 @@ describe("App: cancelling a load", () => {
     await settle(0, 3);
     await screen.findByText(/Showing 3 tickets/);
 
-    fireEvent.click(screen.getByRole("button", { name: /refresh data/i }));
+    fireEvent.click(screen.getByRole("button", { name: /refresh/i }));
     await waitFor(() => expect(loads).toHaveLength(2));
     expect(loads[1].refresh).toBe(true);
 
     fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
 
     expect(loads[1].signal?.aborted).toBe(true);
-    expect(await screen.findByRole("button", { name: /refresh data/i })).toBeEnabled();
+    expect(await screen.findByRole("button", { name: /refresh/i })).toBeEnabled();
     expect(screen.getByText("Showing 3 tickets updated in the last 30 days.")).toBeInTheDocument();
     expect(screen.queryByText("Loading was cancelled.")).not.toBeInTheDocument();
     expect(loads).toHaveLength(2); // nothing was re-requested

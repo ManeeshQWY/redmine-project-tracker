@@ -111,10 +111,10 @@ const FLAT_PAGE_SIZE = 200;
 const GROUP_ROW_CAP = 300;
 
 const inputCls =
-  "rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
-const labelCls = "text-[11px] font-medium text-slate-500 dark:text-slate-400";
+  "rounded-md border border-ctl bg-white px-2 py-1.5 text-xs text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
+const labelCls = "text-xs font-medium text-slate-500 dark:text-slate-400";
 const buttonCls =
-  "rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700";
+  "rounded-md border border-ctl bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700";
 
 /** A button + floating panel that closes on an outside click or Escape. */
 function Popover({ label, align = "left", children }: { label: ReactNode; align?: "left" | "right"; children: ReactNode }) {
@@ -183,10 +183,10 @@ function PeopleMultiSelect({
           onChange={(e) => setQuery(e.target.value)}
         />
         <div className="mb-1 flex gap-2">
-          <button onClick={selectShown} disabled={visible.length === 0} className="text-[11px] font-medium text-brand-600 hover:underline disabled:opacity-50 dark:text-brand-400">
+          <button onClick={selectShown} disabled={visible.length === 0} className="text-xs font-medium text-brand-600 hover:underline disabled:opacity-50 dark:text-brand-400">
             Select {q ? "shown" : "all"}
           </button>
-          <button onClick={() => onChange([])} disabled={selected.length === 0} className="text-[11px] font-medium text-brand-600 hover:underline disabled:opacity-50 dark:text-brand-400">
+          <button onClick={() => onChange([])} disabled={selected.length === 0} className="text-xs font-medium text-brand-600 hover:underline disabled:opacity-50 dark:text-brand-400">
             Clear
           </button>
         </div>
@@ -195,10 +195,10 @@ function PeopleMultiSelect({
             <label key={p.name} className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700">
               <input type="checkbox" checked={chosen.has(p.name)} onChange={() => toggle(p.name)} />
               <span className="flex-1 truncate">{p.name}</span>
-              <span className="text-[10px] text-slate-400 dark:text-slate-500">{p.role}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{p.role}</span>
             </label>
           ))}
-          {visible.length === 0 && <p className="px-1 py-2 text-xs text-slate-400 dark:text-slate-500">No one matches.</p>}
+          {visible.length === 0 && <p className="px-1 py-2 text-xs text-slate-500 dark:text-slate-400">No one matches.</p>}
         </div>
       </div>
     </Popover>
@@ -402,12 +402,12 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
 
   if (timeEntries === null) {
     return (
-      <div className="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-700 dark:bg-slate-900">
+      <div className="rounded-lg border border-dashed border-ctl bg-white p-10 text-center dark:border-slate-700 dark:bg-slate-900">
         <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
           Developer and QA performance per task — estimation, actual hours and bugs — consolidated up through each
           task&apos;s child tickets.
         </p>
-        <p className="mb-4 text-xs text-slate-400 dark:text-slate-500">
+        <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
           Needs this project&apos;s time entries, which can take a few seconds to load.
         </p>
         {error && <p className="mb-3 text-xs text-rose-600 dark:text-rose-400">{error}</p>}
@@ -421,7 +421,7 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
         {loading && (
           <button
             onClick={cancelLoad}
-            className="ml-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            className="ml-2 rounded-md border border-ctl bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             Cancel
           </button>
@@ -490,7 +490,12 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
     switch (col.id) {
       case "name": return r.name;
       case "role": return r.role;
-      case "project": return r.project;
+      case "project":
+        return (
+          <span className="block max-w-[12rem] truncate" title={r.project}>
+            {r.project}
+          </span>
+        );
       case "task":
         return (
           <span>
@@ -502,13 +507,13 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
               <span className="font-medium">#{r.taskId}</span>
             )}{" "}
             {r.taskSubject}
-            <span className="ml-1.5 text-[10px] text-slate-400 dark:text-slate-500">{r.tracker}</span>
+            <span className="ml-1.5 text-xs text-slate-500 dark:text-slate-400">{r.tracker}</span>
           </span>
         );
-      case "complexity": return <span className="text-slate-300 dark:text-slate-600">—</span>;
-      case "aiUsage": return <span className="text-slate-300 dark:text-slate-600">—</span>;
-      case "estimation": return r.estimation === null ? <span className="text-slate-300 dark:text-slate-600">—</span> : formatHours(r.estimation);
-      case "taskEstimate": return r.taskEstimate === null ? <span className="text-slate-300 dark:text-slate-600">—</span> : formatHours(r.taskEstimate);
+      case "complexity": return <span className="text-slate-400 dark:text-slate-500">—</span>;
+      case "aiUsage": return <span className="text-slate-400 dark:text-slate-500">—</span>;
+      case "estimation": return r.estimation === null ? <span className="text-slate-400 dark:text-slate-500">—</span> : formatHours(r.estimation);
+      case "taskEstimate": return r.taskEstimate === null ? <span className="text-slate-400 dark:text-slate-500">—</span> : formatHours(r.taskEstimate);
       case "actuals": return formatHours(r.actuals) || "0";
       case "bugsReported": return r.bugsReported;
       case "ctBugs": return r.ctBugs;
@@ -517,7 +522,7 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
 
   function totalCell(col: Column, t: PerformanceTotals): ReactNode {
     switch (col.id) {
-      case "estimation": return t.estimation === null ? <span className="text-slate-300 dark:text-slate-600">—</span> : formatHours(t.estimation) || "0";
+      case "estimation": return t.estimation === null ? <span className="text-slate-400 dark:text-slate-500">—</span> : formatHours(t.estimation) || "0";
       case "actuals": return formatHours(t.actuals) || "0";
       case "bugsReported": return t.bugsReported;
       case "ctBugs": return t.ctBugs;
@@ -542,7 +547,7 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
         ))}
         {rows.length > capped.length && (
           <tr>
-            <td colSpan={visibleColumns.length} className="px-2 py-1.5 text-center text-[11px] text-slate-400 dark:text-slate-500" style={{ paddingLeft: 8 + depth * 18 }}>
+            <td colSpan={visibleColumns.length} className="px-2 py-1.5 text-center text-xs text-slate-500 dark:text-slate-400" style={{ paddingLeft: 8 + depth * 18 }}>
               Showing the first {capped.length} of {rows.length} rows in this group — narrow the filters or export to see all.
             </td>
           </tr>
@@ -560,9 +565,9 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
             <td key={c.id} className={tdCls(c)} style={i === 0 ? { paddingLeft: 8 + depth * 18 } : undefined}>
               {i === 0 ? (
                 <span>
-                  <span className="mr-1.5 inline-block w-3 text-slate-400">{open ? "▾" : "▸"}</span>
+                  <span className="mr-1.5 inline-block w-3 text-slate-500 dark:text-slate-400">{open ? "▾" : "▸"}</span>
                   {group.label}
-                  <span className="ml-1.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">({group.totals.rows})</span>
+                  <span className="ml-1.5 text-xs font-normal text-slate-500 dark:text-slate-400">({group.totals.rows})</span>
                 </span>
               ) : (
                 totalCell(c, group.totals)
@@ -583,14 +588,14 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Developer &amp; QA Performance</h3>
-            <p className="text-xs text-slate-400 dark:text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {filteredRows.length.toLocaleString()} of {scopedRows.length.toLocaleString()} rows · {formatHours(totals.actuals) || "0"}h actual
               {totals.estimation !== null ? ` vs ${formatHours(totals.estimation) || "0"}h estimated` : ""} · {totals.bugsReported} bugs ({totals.ctBugs} CT)
               {` · covers ${windowPhrase(loadWindow)}`}
               {fetchedAt && ` · time data loaded ${formatDateTime(fetchedAt)}`}
             </p>
             {linkStats.bugs > 0 && (
-              <p className="text-[11px] text-slate-400 dark:text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 This project has {linkStats.bugs.toLocaleString()} bugs ({linkStats.ctBugs.toLocaleString()} CT).{" "}
                 {linkStats.unlinkedBugs > 0
                   ? `${linkStats.unlinkedBugs.toLocaleString()} (${linkStats.unlinkedCtBugs.toLocaleString()} CT) have no parent task, so they count only for the person they're assigned to.`
@@ -607,7 +612,7 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
             >
               {exporting ? "Exporting…" : `Export to Excel (${sortedRows.length.toLocaleString()} rows)`}
             </button>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400" title="A parent task includes its children, so a person appears on the task and again on each parent above it. The export has a Notes sheet that says the same.">
+            <span className="text-xs text-slate-500 dark:text-slate-400" title="A parent task includes its children, so a person appears on the task and again on each parent above it. The export has a Notes sheet that says the same.">
               Rows overlap — do not add the columns up
             </span>
             <button onClick={() => load(true)} disabled={loading} className={buttonCls}>
@@ -675,14 +680,14 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
           <button onClick={clearFilters} disabled={!anyFilter} className={buttonCls}>Clear filters</button>
         </div>
         {pending && (
-          <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400">Filter changes aren&apos;t applied yet — click Apply (or press Enter in the search box).</p>
+          <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">Filter changes aren&apos;t applied yet — click Apply (or press Enter in the search box).</p>
         )}
 
         {hasFacets && (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {FACETS.flatMap((f) =>
               (draft.filters[f.field] as string[]).map((v) => (
-                <span key={`${f.field}:${v}`} className="inline-flex items-center gap-1 rounded-full bg-brand-600 px-2.5 py-1 text-[11px] font-medium text-white">
+                <span key={`${f.field}:${v}`} className="inline-flex items-center gap-1 rounded-full bg-brand-600 px-2.5 py-1 text-xs font-medium text-white">
                   {f.label}: {v}
                   <button aria-label={`Remove ${f.label} ${v}`} onClick={() => removeFacet(f.field, v)} className="ml-0.5 leading-none hover:text-slate-200">×</button>
                 </span>
@@ -763,7 +768,7 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
             <thead className="sticky top-0 z-[1] bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               <tr>
                 {visibleColumns.map((c) => (
-                  <th key={c.id} className={`px-2 py-1.5 ${c.numeric ? "text-right" : ""}`} title={c.hint}>
+                  <th scope="col" key={c.id} className={`px-2 py-1.5 ${c.numeric ? "text-right" : ""}`} title={c.hint}>
                     {c.sort ? (
                       <button onClick={() => toggleSort(c.sort!)} className="font-semibold hover:text-slate-800 dark:hover:text-slate-100">
                         {c.label}
@@ -788,7 +793,7 @@ export default function PerformanceDashboard({ projectIdentifier, projectLabel, 
                   ))}
               {filteredRows.length === 0 && (
                 <tr>
-                  <td colSpan={visibleColumns.length} className="px-2 py-8 text-center text-slate-400 dark:text-slate-500">
+                  <td colSpan={visibleColumns.length} className="px-2 py-8 text-center text-slate-500 dark:text-slate-400">
                     {allRows.length === 0
                       ? "No Developer/QA activity found for this project."
                       : scopedRows.length === 0

@@ -14,7 +14,7 @@ interface Props {
 }
 
 const MAX_TICKETS_SHOWN = 200;
-const dim = "text-slate-300 dark:text-slate-600";
+const dim = "text-slate-400 dark:text-slate-500";
 
 function statusText(byStatus: Record<string, number>): string {
   return Object.entries(byStatus)
@@ -79,15 +79,15 @@ export default function CurrentWorkloadPanel({ rows, redmineBaseUrl, loadWindow,
         <table className="w-full text-left text-xs" aria-label="Current tickets per person">
           <thead className="sticky top-0 z-[1] bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <tr>
-              <th className="px-2 py-1.5">Name</th>
-              <th className="px-2 py-1.5">Role</th>
-              <th className="px-2 py-1.5 text-right">Open tickets</th>
-              <th className="px-2 py-1.5 text-right">Bugs</th>
-              <th className="px-2 py-1.5 text-right" title="Estimate minus hours logged, over their open tickets that have nothing nested under them. A + means some tickets have no estimate, so the real figure is higher.">Hours left</th>
-              <th className="px-2 py-1.5 text-right" title="Open tickets with no estimate">No estimate</th>
-              <th className="px-2 py-1.5 text-right" title="Open tickets not updated for more than a week">Quiet 7d+</th>
-              <th className="px-2 py-1.5 text-right" title="Days since their oldest open ticket was created">Oldest (d)</th>
-              <th className="px-2 py-1.5">By status</th>
+              <th scope="col" className="px-2 py-1.5">Name</th>
+              <th scope="col" className="px-2 py-1.5">Role</th>
+              <th scope="col" className="px-2 py-1.5 text-right">Open tickets</th>
+              <th scope="col" className="px-2 py-1.5 text-right">Bugs</th>
+              <th scope="col" className="px-2 py-1.5 text-right" title="Estimate minus hours logged, over their open tickets that have nothing nested under them. A + means some tickets have no estimate, so the real figure is higher.">Hours left</th>
+              <th scope="col" className="px-2 py-1.5 text-right" title="Open tickets with no estimate">No estimate</th>
+              <th scope="col" className="px-2 py-1.5 text-right" title="Open tickets not updated for more than a week">Quiet 7d+</th>
+              <th scope="col" className="px-2 py-1.5 text-right" title="Days since their oldest open ticket was created">Oldest (d)</th>
+              <th scope="col" className="px-2 py-1.5">By status</th>
             </tr>
           </thead>
           <tbody>
@@ -102,7 +102,7 @@ export default function CurrentWorkloadPanel({ rows, redmineBaseUrl, loadWindow,
                     aria-expanded={expandable ? open : undefined}
                   >
                     <td className="px-2 py-1.5">
-                      <span className="mr-1.5 inline-block w-3 text-slate-400">{expandable ? (open ? "▾" : "▸") : ""}</span>
+                      <span className="mr-1.5 inline-block w-3 text-slate-500 dark:text-slate-400">{expandable ? (open ? "▾" : "▸") : ""}</span>
                       {r.name}
                     </td>
                     <td className="px-2 py-1.5">{r.role}</td>
@@ -119,23 +119,23 @@ export default function CurrentWorkloadPanel({ rows, redmineBaseUrl, loadWindow,
                       {r.quiet === 0 ? <span className={dim}>0</span> : r.quiet}
                     </td>
                     <td className="px-2 py-1.5 text-right tabular-nums">{r.oldestDays === null ? <span className={dim}>—</span> : r.oldestDays}</td>
-                    <td className="px-2 py-1.5 text-[11px] text-slate-500 dark:text-slate-400">{statusText(r.byStatus) || <span className={dim}>—</span>}</td>
+                    <td className="px-2 py-1.5 text-xs text-slate-500 dark:text-slate-400">{statusText(r.byStatus) || <span className={dim}>—</span>}</td>
                   </tr>
                   {open && (
                     <tr className="bg-slate-50/60 dark:bg-slate-800/30">
                       <td colSpan={9} className="px-6 py-2">
-                        <ul className="space-y-0.5 text-[11px]">
+                        <ul className="space-y-0.5 text-xs">
                           {r.tickets.slice(0, MAX_TICKETS_SHOWN).map((t) => (
                             <li key={t.id} className="flex gap-3">
                               <span className="min-w-0 flex-1 truncate">
                                 {link(t.id)} {t.subject}
                               </span>
-                              <span className="text-slate-400 dark:text-slate-500">{t.tracker}</span>
+                              <span className="text-slate-500 dark:text-slate-400">{t.tracker}</span>
                               <span className="w-28 text-right text-slate-500 dark:text-slate-400">{t.status}</span>
                             </li>
                           ))}
                           {r.tickets.length > MAX_TICKETS_SHOWN && (
-                            <li className="text-slate-400 dark:text-slate-500">Showing the first {MAX_TICKETS_SHOWN} of {r.tickets.length} tickets.</li>
+                            <li className="text-slate-500 dark:text-slate-400">Showing the first {MAX_TICKETS_SHOWN} of {r.tickets.length} tickets.</li>
                           )}
                         </ul>
                       </td>
@@ -146,7 +146,7 @@ export default function CurrentWorkloadPanel({ rows, redmineBaseUrl, loadWindow,
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-2 py-6 text-center text-slate-400 dark:text-slate-500">
+                <td colSpan={9} className="px-2 py-6 text-center text-slate-500 dark:text-slate-400">
                   No one matches the current filters.
                 </td>
               </tr>

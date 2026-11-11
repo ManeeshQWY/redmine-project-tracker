@@ -22,7 +22,7 @@ export default function AwaitingQaPanel({ issues, redmineBaseUrl, projectLabel =
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-        Waiting for QA <span className="font-normal text-slate-400">({queue.length.toLocaleString()})</span>
+        Waiting for QA <span className="font-normal text-slate-500 dark:text-slate-400">({queue.length.toLocaleString()})</span>
       </h3>
         <ExportButton build={() => awaitingQaSheets(queue, redmineBaseUrl)} filenamePrefix="redmine_waiting_for_qa" projectLabel={projectLabel} label="Export QA queue" disabled={queue.length === 0} />
       </div>
@@ -30,10 +30,10 @@ export default function AwaitingQaPanel({ issues, redmineBaseUrl, projectLabel =
         Tickets in &ldquo;Dev Completed&rdquo; (or similar) that have not started testing, longest wait first. The wait is the days since the ticket was last updated.
       </p>
       {queue.length === 0 ? (
-        <p className="py-4 text-center text-sm text-slate-400 dark:text-slate-500">Nothing is waiting for QA.</p>
+        <p className="py-4 text-center text-sm text-slate-500 dark:text-slate-400">Nothing is waiting for QA.</p>
       ) : (
         <div className="max-h-80 overflow-auto">
-          <table className="w-full text-left text-[11px]" aria-label="Waiting for QA">
+          <table className="w-full text-left text-xs" aria-label="Waiting for QA">
             <tbody>
               {queue.slice(0, MAX_SHOWN).map((q) => (
                 <tr key={q.issue.id} className="border-t border-slate-100 dark:border-slate-800">
@@ -47,7 +47,7 @@ export default function AwaitingQaPanel({ issues, redmineBaseUrl, projectLabel =
             </tbody>
           </table>
           {queue.length > MAX_SHOWN && (
-            <p className="py-1 text-center text-[11px] text-slate-400 dark:text-slate-500">Longest {MAX_SHOWN} of {queue.length} shown.</p>
+            <p className="py-1 text-center text-xs text-slate-500 dark:text-slate-400">Longest {MAX_SHOWN} of {queue.length} shown.</p>
           )}
         </div>
       )}

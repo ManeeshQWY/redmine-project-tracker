@@ -8,10 +8,10 @@ interface Props {
 /** Reusable "All" + toggle-chip multi-select, e.g. the global tracker filter. */
 export default function ChipMultiSelect({ label, options, selected, onChange }: Props) {
   const chipCls = (active: boolean) =>
-    `rounded-full px-2.5 py-1 text-[11px] font-medium ${
+    `inline-flex h-7 items-center rounded-full px-3 text-xs font-medium transition-colors ${
       active
         ? "bg-brand-600 text-white"
-        : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+        : "bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-600 dark:hover:bg-slate-700"
     }`;
 
   function toggle(option: string) {
@@ -19,13 +19,13 @@ export default function ChipMultiSelect({ label, options, selected, onChange }: 
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <span className="mr-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">{label}:</span>
-      <button onClick={() => onChange([])} className={chipCls(selected.length === 0)}>
+    <div role="group" aria-label={`Filter by ${label.toLowerCase()}`} className="flex flex-wrap items-center gap-1.5">
+      <span className="mr-1 text-xs font-medium text-slate-600 dark:text-slate-400">{label}:</span>
+      <button type="button" aria-pressed={selected.length === 0} onClick={() => onChange([])} className={chipCls(selected.length === 0)}>
         All
       </button>
       {options.map((option) => (
-        <button key={option} onClick={() => toggle(option)} className={chipCls(selected.includes(option))}>
+        <button type="button" key={option} aria-pressed={selected.includes(option)} onClick={() => toggle(option)} className={chipCls(selected.includes(option))}>
           {option}
         </button>
       ))}

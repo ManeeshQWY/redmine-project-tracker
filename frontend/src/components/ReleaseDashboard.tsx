@@ -61,7 +61,7 @@ export default function ReleaseDashboard({ issues, projectIdentifier, loadWindow
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Release / Target Version Summary</h3>
         <select
-          className="rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800"
+          className="rounded border border-ctl bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800"
           value={sortKey}
           onChange={(e) => setSortKey(e.target.value as SortKey)}
         >
@@ -76,21 +76,21 @@ export default function ReleaseDashboard({ issues, projectIdentifier, loadWindow
         </select>
       </div>
       {versionsError && (
-        <p className="mb-2 text-[11px] text-amber-600 dark:text-amber-400">Release dates couldn&apos;t be loaded — everything else below is unaffected.</p>
+        <p className="mb-2 text-xs text-amber-800 dark:text-amber-300">Release dates couldn&apos;t be loaded — everything else below is unaffected.</p>
       )}
       <div className="max-h-[480px] overflow-auto">
         <table className="w-full text-left text-xs" aria-label="Release summary">
           <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <tr>
-              <th className="px-2 py-1.5">Release</th>
-              <th className="px-2 py-1.5">Release Date</th>
-              <th className="px-2 py-1.5 text-right">Total</th>
-              <th className="px-2 py-1.5 text-right">Closed</th>
-              <th className="px-2 py-1.5 text-right">Not Closed</th>
-              <th className="px-2 py-1.5 text-right">Bugs</th>
-              <th className="px-2 py-1.5 text-right">Features</th>
-              <th className="px-2 py-1.5 text-right">Est. Hours</th>
-              <th className="px-2 py-1.5 text-right" title="Hours logged on each ticket itself, so a parent and its sub-tickets are not counted twice">Actual Hours</th>
+              <th scope="col" className="px-2 py-1.5">Release</th>
+              <th scope="col" className="px-2 py-1.5">Release Date</th>
+              <th scope="col" className="px-2 py-1.5 text-right">Total</th>
+              <th scope="col" className="px-2 py-1.5 text-right">Closed</th>
+              <th scope="col" className="px-2 py-1.5 text-right">Not Closed</th>
+              <th scope="col" className="px-2 py-1.5 text-right">Bugs</th>
+              <th scope="col" className="px-2 py-1.5 text-right">Features</th>
+              <th scope="col" className="px-2 py-1.5 text-right">Est. Hours</th>
+              <th scope="col" className="px-2 py-1.5 text-right" title="Hours logged on each ticket itself, so a parent and its sub-tickets are not counted twice">Actual Hours</th>
             </tr>
           </thead>
           <tbody>

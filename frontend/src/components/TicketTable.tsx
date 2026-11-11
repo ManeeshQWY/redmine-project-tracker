@@ -33,6 +33,9 @@ const BASE_COLUMNS: { field: SortField | null; label: string }[] = [
   { field: null, label: "Assigned QA" },
 ];
 
+// Columns whose values are numbers: right-aligned, so the digits line up
+const NUMERIC_COLUMNS = new Set(["Done %", "Est. Hours", "Direct Spent", "Total Spent", "Total Estimated"]);
+
 // ID column is pinned during horizontal scroll (18 columns is wide) — needs a solid
 // background matching the row/header so scrolled-under content doesn't show through.
 const STICKY_ID_CELL = "sticky left-0 z-[1] bg-white dark:bg-slate-900 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]";
@@ -69,7 +72,7 @@ export default function TicketTable({ issues, redmineBaseUrl, priorityOrder }: P
         <div className="flex items-center gap-2">
           <span>Rows per page:</span>
           <select
-            className="rounded border border-slate-300 bg-white px-1.5 py-1 dark:border-slate-600 dark:bg-slate-800"
+            className="rounded border border-ctl bg-white px-1.5 py-1 dark:border-slate-600 dark:bg-slate-800"
             value={pageSize}
             onChange={(e) => {
               setPageSize(Number(e.target.value));
@@ -88,14 +91,19 @@ export default function TicketTable({ issues, redmineBaseUrl, priorityOrder }: P
             <tr>
               {columns.map((col, idx) => (
                 <th
+                  scope="col"
                   key={col.label}
-                  className={`whitespace-nowrap px-2 py-2 font-medium ${col.field ? "cursor-pointer select-none hover:text-slate-800 dark:hover:text-slate-200" : ""} ${
-                    idx === 0 ? STICKY_ID_HEADER : ""
-                  }`}
-                  onClick={() => col.field && toggleSort(col.field)}
+                  aria-sort={col.field && col.field === sort.field ? (sort.direction === "asc" ? "ascending" : "descending") : undefined}
+                  className={`whitespace-nowrap px-3 py-2.5 font-semibold ${NUMERIC_COLUMNS.has(col.label) ? "text-right" : ""} ${idx === 0 ? STICKY_ID_HEADER : ""}`}
                 >
-                  {col.label}
-                  {col.field === sort.field ? (sort.direction === "asc" ? " ▲" : " ▼") : ""}
+                  {col.field ? (
+                    <button type="button" onClick={() => toggleSort(col.field!)} className="select-none font-semibold hover:text-slate-900 dark:hover:text-slate-100">
+                      {col.label}
+                      {col.field === sort.field ? (sort.direction === "asc" ? " ▲" : " ▼") : ""}
+                    </button>
+                  ) : (
+                    col.label
+                  )}
                 </th>
               ))}
             </tr>
@@ -106,7 +114,7 @@ export default function TicketTable({ issues, redmineBaseUrl, priorityOrder }: P
             ))}
             {pageRows.length === 0 && (
               <tr>
-                <td colSpan={columns.length} className="px-2 py-6 text-center text-slate-400">
+                <td colSpan={columns.length} className="px-2 py-6 text-center text-slate-500 dark:text-slate-400">
                   No tickets match the current filters.
                 </td>
               </tr>
@@ -119,16 +127,16 @@ export default function TicketTable({ issues, redmineBaseUrl, priorityOrder }: P
           Page {currentPage} of {totalPages}
         </span>
         <div className="flex gap-1">
-          <button className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40 dark:border-slate-600" disabled={currentPage <= 1} onClick={() => setPage(1)}>
+          <button className="rounded border border-ctl px-2 py-1 disabled:opacity-40 dark:border-slate-600" disabled={currentPage <= 1} onClick={() => setPage(1)}>
             « First
           </button>
-          <button className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40 dark:border-slate-600" disabled={currentPage <= 1} onClick={() => setPage((p) => p - 1)}>
+          <button className="rounded border border-ctl px-2 py-1 disabled:opacity-40 dark:border-slate-600" disabled={currentPage <= 1} onClick={() => setPage((p) => p - 1)}>
             ‹ Prev
           </button>
-          <button className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40 dark:border-slate-600" disabled={currentPage >= totalPages} onClick={() => setPage((p) => p + 1)}>
+          <button className="rounded border border-ctl px-2 py-1 disabled:opacity-40 dark:border-slate-600" disabled={currentPage >= totalPages} onClick={() => setPage((p) => p + 1)}>
             Next ›
           </button>
-          <button className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40 dark:border-slate-600" disabled={currentPage >= totalPages} onClick={() => setPage(totalPages)}>
+          <button className="rounded border border-ctl px-2 py-1 disabled:opacity-40 dark:border-slate-600" disabled={currentPage >= totalPages} onClick={() => setPage(totalPages)}>
             Last »
           </button>
         </div>
@@ -141,7 +149,7 @@ function TicketRow({ issue, redmineBaseUrl, showProjectColumn }: { issue: Issue;
   const link = `${redmineBaseUrl}/issues/${issue.id}`;
   return (
     <tr className="border-t border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60">
-      <td className={`px-2 py-1.5 font-medium text-brand-700 dark:text-brand-500 ${STICKY_ID_CELL}`}>
+      <td className={`px-2 py-1.5 font-medium text-brand-700 dark:text-brand-400 ${STICKY_ID_CELL}`}>
         <a href={link} target="_blank" rel="noreferrer noopener" className="hover:underline">
           #{issue.id}
         </a>
@@ -154,24 +162,24 @@ function TicketRow({ issue, redmineBaseUrl, showProjectColumn }: { issue: Issue;
       <td className="px-2 py-1.5">
         <PriorityBadge priority={issue.priority} />
       </td>
-      <td className="px-2 py-1.5">{blank(issue.author)}</td>
+      <td className="whitespace-nowrap px-3 py-2">{blank(issue.author)}</td>
       <td className="max-w-[280px] truncate px-2 py-1.5" title={issue.subject}>
         <a href={link} target="_blank" rel="noreferrer noopener" className="hover:underline">
           {issue.subject}
         </a>
       </td>
-      <td className="px-2 py-1.5">{issue.doneRatio}%</td>
-      <td className="px-2 py-1.5">{formatDate(issue.createdOn)}</td>
-      <td className="px-2 py-1.5">{formatDate(issue.updatedOn)}</td>
-      <td className="px-2 py-1.5">{blank(issue.assignedTo)}</td>
-      <td className="px-2 py-1.5">{blank(issue.targetVersion)}</td>
-      <td className="px-2 py-1.5">{formatDate(issue.dueDate)}</td>
-      <td className="px-2 py-1.5">{formatDate(issue.closedOn)}</td>
-      <td className="px-2 py-1.5">{formatHours(issue.estimatedHours)}</td>
-      <td className="px-2 py-1.5">{formatHours(issue.spentHours)}</td>
-      <td className="px-2 py-1.5">{formatHours(issue.totalSpentHours)}</td>
-      <td className="px-2 py-1.5">{formatHours(issue.totalEstimatedHours)}</td>
-      <td className="px-2 py-1.5">{blank(issue.assignedQA)}</td>
+      <td className="px-3 py-2 text-right tabular-nums">{issue.doneRatio}%</td>
+      <td className="whitespace-nowrap px-3 py-2 tabular-nums">{formatDate(issue.createdOn)}</td>
+      <td className="whitespace-nowrap px-3 py-2 tabular-nums">{formatDate(issue.updatedOn)}</td>
+      <td className="whitespace-nowrap px-3 py-2">{blank(issue.assignedTo)}</td>
+      <td className="whitespace-nowrap px-3 py-2">{blank(issue.targetVersion)}</td>
+      <td className="whitespace-nowrap px-3 py-2 tabular-nums">{formatDate(issue.dueDate)}</td>
+      <td className="whitespace-nowrap px-3 py-2 tabular-nums">{formatDate(issue.closedOn)}</td>
+      <td className="px-3 py-2 text-right tabular-nums">{formatHours(issue.estimatedHours)}</td>
+      <td className="px-3 py-2 text-right tabular-nums">{formatHours(issue.spentHours)}</td>
+      <td className="px-3 py-2 text-right tabular-nums">{formatHours(issue.totalSpentHours)}</td>
+      <td className="px-3 py-2 text-right tabular-nums">{formatHours(issue.totalEstimatedHours)}</td>
+      <td className="whitespace-nowrap px-3 py-2">{blank(issue.assignedQA)}</td>
     </tr>
   );
 }

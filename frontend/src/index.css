@@ -2,8 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200;
+@layer base {
+  /* Tell the browser which scheme the page is in, so native scrollbars, date pickers and
+     checkboxes follow the theme instead of staying white in dark mode. */
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  /* The same page background as the app wrapper, so cards read as raised in both themes. */
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased dark:bg-slate-950 dark:text-slate-200;
+  }
+  /* One visible keyboard focus ring for everything interactive. */
+  :where(a, button, select, input, textarea, summary, [tabindex]):focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-slate-50 dark:ring-brand-400 dark:ring-offset-slate-950;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @keyframes loading-slide {

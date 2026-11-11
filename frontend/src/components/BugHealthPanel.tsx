@@ -17,7 +17,7 @@ const MAX_SHOWN = 25;
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div title={hint}>
-      <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</div>
+      <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</div>
       <div className="text-xl font-semibold text-slate-800 dark:text-slate-100">{value}</div>
     </div>
   );
@@ -46,16 +46,16 @@ export default function BugHealthPanel({ issues, redmineBaseUrl, projectLabel = 
       </div>
 
       {h.openBugs === 0 ? (
-        <p className="py-3 text-center text-sm text-slate-400 dark:text-slate-500">No open bugs.</p>
+        <p className="py-3 text-center text-sm text-slate-500 dark:text-slate-400">No open bugs.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <table className="w-full self-start text-left text-xs" aria-label="Open bugs per person">
             <thead className="bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               <tr>
-                <th className="px-2 py-1.5">Held by</th>
-                <th className="px-2 py-1.5 text-right">Open</th>
-                <th className="px-2 py-1.5 text-right">Over 30 days</th>
-                <th className="px-2 py-1.5 text-right">Oldest (d)</th>
+                <th scope="col" className="px-2 py-1.5">Held by</th>
+                <th scope="col" className="px-2 py-1.5 text-right">Open</th>
+                <th scope="col" className="px-2 py-1.5 text-right">Over 30 days</th>
+                <th scope="col" className="px-2 py-1.5 text-right">Oldest (d)</th>
               </tr>
             </thead>
             <tbody>
@@ -70,7 +70,7 @@ export default function BugHealthPanel({ issues, redmineBaseUrl, projectLabel = 
             </tbody>
           </table>
           <div className="max-h-72 overflow-auto">
-            <table className="w-full text-left text-[11px]" aria-label="Oldest open bugs">
+            <table className="w-full text-left text-xs" aria-label="Oldest open bugs">
               <tbody>
                 {h.oldest.slice(0, MAX_SHOWN).map((b) => (
                   <tr key={b.issue.id} className="border-t border-slate-100 dark:border-slate-800">
@@ -83,7 +83,7 @@ export default function BugHealthPanel({ issues, redmineBaseUrl, projectLabel = 
               </tbody>
             </table>
             {h.oldest.length > MAX_SHOWN && (
-              <p className="py-1 text-center text-[11px] text-slate-400 dark:text-slate-500">Oldest {MAX_SHOWN} of {h.oldest.length} shown.</p>
+              <p className="py-1 text-center text-xs text-slate-500 dark:text-slate-400">Oldest {MAX_SHOWN} of {h.oldest.length} shown.</p>
             )}
           </div>
         </div>

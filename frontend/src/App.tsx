@@ -33,6 +33,8 @@ import ChatPanel from "./components/ChatPanel";
 import AwaitingQaPanel from "./components/AwaitingQaPanel";
 import BugHealthPanel from "./components/BugHealthPanel";
 import ChasePanel from "./components/ChasePanel";
+import SectionLabel from "./components/SectionLabel";
+import OverviewHeadline from "./components/OverviewHeadline";
 import ErrorBoundary from "./components/ErrorBoundary";
 import LimitedWindowNotice from "./components/LimitedWindowNotice";
 import EstimateAccuracyPanel from "./components/EstimateAccuracyPanel";
@@ -44,6 +46,23 @@ import { readDevDoneCounts, storeDevDoneCounts } from "./utils/stages";
 import { LogoMark, TabIcon } from "./components/icons";
 
 type Tab = "overview" | "standup" | "quality" | "tickets" | "parents" | "aging" | "release" | "qa" | "time" | "performance" | "closedTrend" | "myAssigned";
+
+type TabGroup = "Briefing" | "Work" | "Flow" | "People";
+const TAB_GROUPS: TabGroup[] = ["Briefing", "Work", "Flow", "People"];
+const TAB_GROUP: Record<Tab, TabGroup> = {
+  overview: "Briefing",
+  standup: "Briefing",
+  quality: "Briefing",
+  tickets: "Work",
+  parents: "Work",
+  release: "Work",
+  qa: "Work",
+  aging: "Flow",
+  closedTrend: "Flow",
+  time: "People",
+  performance: "People",
+  myAssigned: "People",
+};
 
 const TABS: { id: Tab; label: string; description: string }[] = [
   { id: "overview", label: "Overview", description: "Key metrics and breakdowns across the current selection." },
@@ -245,7 +264,7 @@ export default function App() {
     selectedProject === ALL_PROJECTS ? "All Projects" : selectedProjectMeta?.name ?? selectedProject ?? "";
 
   if (!authChecked) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-slate-400">Loading…</div>;
+    return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500 dark:text-slate-400">Loading…</div>;
   }
 
   if (!user) {
@@ -256,7 +275,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 px-6 py-3.5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
+      <header className="z-20 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90 sm:sticky sm:top-0 sm:px-6 sm:py-3.5">
         <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white shadow-sm">
@@ -264,7 +283,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-sm font-semibold leading-tight text-slate-800 dark:text-slate-100">Redmine Project Tracker</h1>
-              <p className="text-[11px] leading-tight text-slate-500 dark:text-slate-400">support.qwysoft.com</p>
+              <p className="text-xs leading-tight text-slate-500 dark:text-slate-400">support.qwysoft.com</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -272,7 +291,8 @@ export default function App() {
             <button
               onClick={toggleTheme}
               title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-              className="rounded-md border border-slate-300 p-1.5 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              className="rounded-lg border border-ctl p-2 text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               {isDark ? (
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
@@ -285,7 +305,7 @@ export default function App() {
               )}
             </button>
             <div className="flex items-center gap-2 border-l border-slate-200 pl-3 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 text-[10px] font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                 {user.name.slice(0, 1).toUpperCase()}
               </span>
               <span className="hidden sm:inline">{user.name}</span>
@@ -305,7 +325,7 @@ export default function App() {
         )}
 
         {!selectedProject && !error && (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-14 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+          <div className="rounded-xl border border-dashed border-ctl bg-white p-14 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
             Select a project above to load its tickets.
           </div>
         )}
@@ -313,26 +333,37 @@ export default function App() {
         {selectedProject && (
           <div className="flex items-start gap-6">
             <aside className="sticky top-[73px] hidden w-56 shrink-0 lg:block">
-              <nav className="space-y-0.5 rounded-xl border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                {TABS.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => selectTab(t.id)}
-                    className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium transition-colors ${
-                      tab === t.id
-                        ? "bg-brand-600 text-white shadow-sm"
-                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    <TabIcon id={t.id} className="h-4 w-4 shrink-0" />
-                    {t.label}
-                  </button>
+              <nav aria-label="Dashboard sections" className="space-y-3 rounded-xl border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+                {TAB_GROUPS.map((group) => (
+                  <div key={group}>
+                    <div className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</div>
+                    <div className="space-y-0.5">
+                      {TABS.filter((t) => TAB_GROUP[t.id] === group).map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => selectTab(t.id)}
+                          aria-current={tab === t.id ? "page" : undefined}
+                          className={`relative flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
+                            tab === t.id
+                              ? "bg-brand-50 text-brand-700 before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-full before:bg-brand-600 dark:bg-brand-900/40 dark:text-brand-200 dark:before:bg-brand-400"
+                              : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                          }`}
+                        >
+                          <TabIcon id={t.id} className="h-4 w-4 shrink-0" />
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </nav>
             </aside>
 
             <div className="min-w-0 flex-1 space-y-4">
-              <nav className="flex gap-1 overflow-x-auto border-b border-slate-200 pb-px dark:border-slate-800 lg:hidden">
+              <nav
+                aria-label="Dashboard sections"
+                className="sticky top-0 z-10 -mx-4 flex gap-1 overflow-x-auto border-b border-slate-200 bg-slate-50/95 px-4 pb-px backdrop-blur [scrollbar-width:none] dark:border-slate-800 dark:bg-slate-950/95 sm:-mx-6 sm:px-6 lg:hidden [&::-webkit-scrollbar]:hidden"
+              >
                 {TABS.map((t) => (
                   <button
                     key={t.id}
@@ -351,8 +382,8 @@ export default function App() {
 
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">{activeTab?.label}</h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{activeTab?.description}</p>
+                  <h2 className="text-xl font-semibold leading-7 tracking-tight text-slate-900 dark:text-slate-50">{activeTab?.label}</h2>
+                  <p className="text-sm leading-5 text-slate-600 dark:text-slate-400">{activeTab?.description}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                 <DataWindowSelect window={loadWindow} onChange={changeWindow} />
@@ -386,7 +417,7 @@ export default function App() {
                   onCancel={cancelLoad}
                 />
               ) : loadCancelled && issues.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-white p-14 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="rounded-xl border border-dashed border-ctl bg-white p-14 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
                   <p className="text-slate-600 dark:text-slate-300">Loading was cancelled.</p>
                   <button
                     onClick={() => loadIssues(selectedProject, false)}
@@ -425,7 +456,7 @@ export default function App() {
 
                   {tab === "overview" && (
                   <div className="space-y-4">
-                    <KpiCards issues={filteredIssues} />
+                    <OverviewHeadline issues={filteredIssues} devDoneCounts={devDoneCounts} />
                     <DeliveryPanel
                       issues={filteredIssues}
                       devDoneCounts={devDoneCounts}
@@ -434,7 +465,8 @@ export default function App() {
                         storeDevDoneCounts(v);
                       }}
                     />
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <KpiCards issues={filteredIssues} />
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                       <BreakdownChart title="Ticket Status" data={aggregateByStatus(filteredIssues)} onBarClick={(v) => drillDown({ status: v })} />
                       <BreakdownChart title="Tracker" data={aggregateByTracker(filteredIssues)} onBarClick={(v) => drillDown({ trackers: [v] })} />
                       <BreakdownChart title="Priority" data={aggregateByPriority(filteredIssues)} onBarClick={(v) => drillDown({ priority: v })} />
@@ -498,13 +530,16 @@ export default function App() {
 
                 {tab === "aging" && (
                   <div className="space-y-4">
+                    <SectionLabel>How old is the open work</SectionLabel>
                     <AgingPanel issues={filteredIssues} redmineBaseUrl={meta?.redmineBaseUrl ?? ""} />
                     <StalenessPanel issues={filteredIssues} redmineBaseUrl={meta?.redmineBaseUrl ?? ""} projectLabel={selectedProjectLabel} />
-                    <BugHealthPanel issues={filteredIssues} redmineBaseUrl={meta?.redmineBaseUrl ?? ""} projectLabel={selectedProjectLabel} />
                     <AgingByTrackerPanel issues={filteredIssues} />
-                    <ResolutionTimePanel issues={filteredIssues} />
+                    <SectionLabel>Quality of the backlog</SectionLabel>
+                    <BugHealthPanel issues={filteredIssues} redmineBaseUrl={meta?.redmineBaseUrl ?? ""} projectLabel={selectedProjectLabel} />
                     <EstimateVsActualPanel issues={filteredIssues} />
                     <EstimateAccuracyPanel issues={filteredIssues} redmineBaseUrl={meta?.redmineBaseUrl ?? ""} devDoneCounts={devDoneCounts} projectLabel={selectedProjectLabel} />
+                    <SectionLabel>How fast work closes</SectionLabel>
+                    <ResolutionTimePanel issues={filteredIssues} />
                   </div>
                 )}
 

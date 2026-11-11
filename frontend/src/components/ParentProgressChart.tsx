@@ -93,7 +93,7 @@ export default function ParentProgressChart({ rows, series }: Props) {
           <li key={s.key} className="flex items-center gap-1.5">
             <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: isDark ? s.color.dark : s.color.light }} />
             {s.label}
-            {s.key === "other" && <span className="text-slate-400 dark:text-slate-500">({s.statuses.join(", ")})</span>}
+            {s.key === "other" && <span className="text-slate-500 dark:text-slate-400">({s.statuses.join(", ")})</span>}
           </li>
         ))}
       </ul>

@@ -31,21 +31,21 @@ export default function EstimateAccuracyPanel({ issues, redmineBaseUrl, devDoneC
         {devDoneCounts ? "Counting" : "Not counting"} &ldquo;Dev Completed&rdquo; as delivered (change on Overview).
       </p>
       {a.rows.length === 0 ? (
-        <p className="py-4 text-center text-sm text-slate-400 dark:text-slate-500">
+        <p className="py-4 text-center text-sm text-slate-500 dark:text-slate-400">
           No delivered ticket has both an estimate and hours logged, so there is nothing to compare yet.
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <div className="max-h-80 overflow-auto">
             <table className="w-full text-left text-xs" aria-label="Estimate accuracy per person">
               <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                 <tr>
-                  <th className="px-2 py-1.5">Person</th>
-                  <th className="px-2 py-1.5 text-right">Tickets</th>
-                  <th className="px-2 py-1.5 text-right">Estimated (h)</th>
-                  <th className="px-2 py-1.5 text-right">Logged (h)</th>
-                  <th className="px-2 py-1.5 text-right">Logged / estimated</th>
-                  <th className="px-2 py-1.5 text-right">Within 20%</th>
+                  <th scope="col" className="px-2 py-1.5">Person</th>
+                  <th scope="col" className="px-2 py-1.5 text-right">Tickets</th>
+                  <th scope="col" className="px-2 py-1.5 text-right">Estimated (h)</th>
+                  <th scope="col" className="px-2 py-1.5 text-right">Logged (h)</th>
+                  <th scope="col" className="px-2 py-1.5 text-right">Logged / estimated</th>
+                  <th scope="col" className="px-2 py-1.5 text-right">Within 20%</th>
                 </tr>
               </thead>
               <tbody>
@@ -77,9 +77,9 @@ export default function EstimateAccuracyPanel({ issues, redmineBaseUrl, devDoneC
           <div>
             <div className="mb-1 text-xs font-semibold text-slate-700 dark:text-slate-200">Biggest overruns</div>
             {a.worst.length === 0 ? (
-              <p className="text-xs text-slate-400 dark:text-slate-500">Nothing ran over its estimate.</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Nothing ran over its estimate.</p>
             ) : (
-              <table className="w-full text-left text-[11px]" aria-label="Biggest overruns">
+              <table className="w-full text-left text-xs" aria-label="Biggest overruns">
                 <tbody>
                   {a.worst.map((w) => (
                     <tr key={w.issue.id} className="border-t border-slate-100 dark:border-slate-800">

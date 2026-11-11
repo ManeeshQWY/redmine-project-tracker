@@ -17,6 +17,8 @@ export default {
           800: "#1e3a8a",
           900: "#172554",
         },
+        // border colour for form controls: 3.5:1 on white, so a field is visible without relying on its fill
+        ctl: "#7b8aa1",
       },
     },
   },

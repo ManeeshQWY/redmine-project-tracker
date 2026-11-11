@@ -46,7 +46,7 @@ export default function LoginScreen({ onLoggedIn }: Props) {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="Paste your API key…"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full rounded-lg border border-ctl px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
 
@@ -61,7 +61,7 @@ export default function LoginScreen({ onLoggedIn }: Props) {
           </button>
         </form>
 
-        <p className="mt-4 text-xs leading-relaxed text-slate-400 dark:text-slate-500">
+        <p className="mt-4 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
           Find your key in Redmine under <span className="font-medium text-slate-500 dark:text-slate-400">My account → API access key</span>.
           Your key is sent once to sign in and is never stored in this browser — only a session
           cookie is kept.

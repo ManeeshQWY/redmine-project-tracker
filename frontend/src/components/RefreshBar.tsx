@@ -29,7 +29,7 @@ export default function RefreshBar({ lastRefreshed, lastFetchDurationMs, loading
           onClick={onExport}
           disabled={exportDisabled}
           title="Downloads the ticket list for what is selected (sheets: Master Tickets, Summary, Time Analysis, Aging)"
-          className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          className="flex items-center gap-1.5 rounded-lg border border-ctl bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
         >
           <DownloadIcon className="h-3.5 w-3.5" />
           Export tickets
@@ -38,7 +38,7 @@ export default function RefreshBar({ lastRefreshed, lastFetchDurationMs, loading
       {loading && onCancel && (
         <button
           onClick={onCancel}
-          className="rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          className="rounded-lg border border-ctl bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
         >
           Cancel
         </button>
@@ -46,10 +46,10 @@ export default function RefreshBar({ lastRefreshed, lastFetchDurationMs, loading
       <button
         onClick={onRefresh}
         disabled={loading}
-        className="flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex items-center gap-1.5 rounded-lg border border-ctl bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
       >
         <RefreshIcon className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-        {loading ? "Refreshing…" : "Refresh Data"}
+        {loading ? "Refreshing…" : "Refresh"}
       </button>
     </div>
   );

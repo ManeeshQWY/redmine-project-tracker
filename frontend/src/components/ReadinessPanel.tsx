@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useTheme } from "../theme";
 import { Issue } from "../types/issue";
 import { formatDate, formatHours } from "../utils/format";
-import { STATUS_COLORS } from "../utils/parentProgress";
+import { stageColor } from "../utils/stageColors";
 import { buildReadiness, ReadinessGroup, ReadinessRag } from "../utils/readiness";
 import { readinessSheets } from "../utils/reportSheets";
 import ExportButton from "./ExportButton";
@@ -36,7 +36,6 @@ function daysText(days: number | null): string {
 /** Per release (or per milestone): how far along it is and whether its date looks safe. */
 export default function ReadinessPanel({ issues, releaseDates, devDoneCounts, projectLabel = "project", now }: Props) {
   const { isDark } = useTheme();
-  const palette = isDark ? STATUS_COLORS.dark : STATUS_COLORS.light;
   const [group, setGroup] = useState<ReadinessGroup>("version");
   const rows = useMemo(() => buildReadiness(issues, group, releaseDates, devDoneCounts, now ?? new Date()), [issues, group, releaseDates, devDoneCounts, now]);
 
@@ -50,7 +49,7 @@ export default function ReadinessPanel({ issues, releaseDates, devDoneCounts, pr
           aria-label="Group readiness by"
           value={group}
           onChange={(e) => setGroup(e.target.value as ReadinessGroup)}
-          className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+          className="rounded-md border border-ctl bg-white px-2 py-1 text-xs text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
         >
           <option value="version">By release (own or inherited from a parent)</option>
           <option value="milestone">By milestone / top-level epic</option>
@@ -64,24 +63,24 @@ export default function ReadinessPanel({ issues, releaseDates, devDoneCounts, pr
       </p>
 
       {rows.length === 0 ? (
-        <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">No tickets.</p>
+        <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">No tickets.</p>
       ) : (
         <div className="max-h-[420px] overflow-auto">
           <table className="w-full text-left text-xs" aria-label="Release readiness">
             <thead className="sticky top-0 z-[1] bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               <tr>
-                <th className="px-2 py-1.5">{group === "version" ? "Release" : "Milestone"}</th>
-                <th className="px-2 py-1.5">Status</th>
-                {group === "version" && <th className="px-2 py-1.5">Date</th>}
-                {group === "version" && <th className="px-2 py-1.5 text-right">When</th>}
-                <th className="px-2 py-1.5 text-right">Tickets</th>
-                <th className="px-2 py-1.5">By stage</th>
-                <th className="px-2 py-1.5 text-right" title="Tickets delivered, as set by the 'count Dev Completed' switch on Overview">Delivered</th>
-                <th className="px-2 py-1.5 text-right" title="Estimated hours of delivered tickets over all estimated hours">By hours</th>
-                <th className="px-2 py-1.5 text-right" title="Bugs still open">Open bugs</th>
-                <th className="px-2 py-1.5 text-right" title="Open tickets nobody owns">Unassigned</th>
-                <th className="px-2 py-1.5 text-right" title="Open tickets with no estimate">No estimate</th>
-                <th className="px-2 py-1.5 text-right" title="Estimate minus hours logged on open tickets">Hours left</th>
+                <th scope="col" className="px-2 py-1.5">{group === "version" ? "Release" : "Milestone"}</th>
+                <th scope="col" className="px-2 py-1.5">Status</th>
+                {group === "version" && <th scope="col" className="px-2 py-1.5">Date</th>}
+                {group === "version" && <th scope="col" className="px-2 py-1.5 text-right">When</th>}
+                <th scope="col" className="px-2 py-1.5 text-right">Tickets</th>
+                <th scope="col" className="px-2 py-1.5">By stage</th>
+                <th scope="col" className="px-2 py-1.5 text-right" title="Tickets delivered, as set by the 'count Dev Completed' switch on Overview">Delivered</th>
+                <th scope="col" className="px-2 py-1.5 text-right" title="Estimated hours of delivered tickets over all estimated hours">By hours</th>
+                <th scope="col" className="px-2 py-1.5 text-right" title="Bugs still open">Open bugs</th>
+                <th scope="col" className="px-2 py-1.5 text-right" title="Open tickets nobody owns">Unassigned</th>
+                <th scope="col" className="px-2 py-1.5 text-right" title="Open tickets with no estimate">No estimate</th>
+                <th scope="col" className="px-2 py-1.5 text-right" title="Estimate minus hours logged on open tickets">Hours left</th>
               </tr>
             </thead>
             <tbody>
@@ -89,7 +88,7 @@ export default function ReadinessPanel({ issues, releaseDates, devDoneCounts, pr
                 <tr key={r.key} className="border-t border-slate-100 dark:border-slate-800">
                   <td className="px-2 py-1.5">{r.label}</td>
                   <td className="px-2 py-1.5">
-                    <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${RAG[r.rag].cls}`}>{RAG[r.rag].label}</span>
+                    <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${RAG[r.rag].cls}`}>{RAG[r.rag].label}</span>
                   </td>
                   {group === "version" && <td className="whitespace-nowrap px-2 py-1.5">{r.releaseDate ? formatDate(r.releaseDate) : "—"}</td>}
                   {group === "version" && (
@@ -102,7 +101,7 @@ export default function ReadinessPanel({ issues, releaseDates, devDoneCounts, pr
                         <div
                           key={s}
                           title={`${STAGE_LABELS[s]}: ${r.byStage[s]}`}
-                          style={{ width: `${(r.byStage[s] / r.tickets) * 100}%`, background: palette[STAGE_ORDER.indexOf(s)] }}
+                          style={{ width: `${(r.byStage[s] / r.tickets) * 100}%`, background: stageColor(s, isDark) }}
                         />
                       ))}
                     </div>
@@ -113,11 +112,11 @@ export default function ReadinessPanel({ issues, releaseDates, devDoneCounts, pr
                     title={r.unestimatedPercent > 20 ? `${Math.round(r.unestimatedPercent)}% of these tickets have no estimate, so this figure is unreliable` : undefined}
                   >
                     {pct(r.hoursPercent)}
-                    {r.unestimatedPercent > 20 && r.hoursPercent !== null ? <span className="text-amber-600 dark:text-amber-400"> ⚠</span> : null}
+                    {r.unestimatedPercent > 20 && r.hoursPercent !== null ? <span className="text-amber-800 dark:text-amber-300"> ⚠</span> : null}
                   </td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">{r.openBugs === 0 ? <span className="text-slate-300 dark:text-slate-600">0</span> : r.openBugs}</td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">{r.unassigned === 0 ? <span className="text-slate-300 dark:text-slate-600">0</span> : r.unassigned}</td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">{r.noEstimate === 0 ? <span className="text-slate-300 dark:text-slate-600">0</span> : r.noEstimate}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{r.openBugs === 0 ? <span className="text-slate-400 dark:text-slate-500">0</span> : <span className="font-semibold text-rose-700 dark:text-rose-300">{r.openBugs}</span>}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{r.unassigned === 0 ? <span className="text-slate-400 dark:text-slate-500">0</span> : <span className="font-semibold text-rose-700 dark:text-rose-300">{r.unassigned}</span>}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{r.noEstimate === 0 ? <span className="text-slate-400 dark:text-slate-500">0</span> : <span className="font-semibold text-rose-700 dark:text-rose-300">{r.noEstimate}</span>}</td>
                   <td
                     className="px-2 py-1.5 text-right tabular-nums"
                     title={r.noEstimate > 0 ? `${r.noEstimate} open ticket${r.noEstimate === 1 ? " has" : "s have"} no estimate, so this is a lower bound` : undefined}

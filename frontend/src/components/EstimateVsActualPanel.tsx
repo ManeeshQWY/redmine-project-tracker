@@ -21,7 +21,7 @@ function HoursTooltip({ active, payload, label, t }: HoursTooltipProps) {
       <div className="mb-1 font-medium">{label}</div>
       {payload.map((p) => (
         <div key={p.dataKey} className="flex items-center justify-between gap-4">
-          <span style={{ color: p.color }}>{p.dataKey === "estimated" ? "Estimated" : "Actual"}</span>
+          <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2 w-2 rounded-full" style={{ background: p.color }} />{p.dataKey === "estimated" ? "Estimated" : "Actual"}</span>
           <span>{(p.value ?? 0).toFixed(1)}</span>
         </div>
       ))}
@@ -67,8 +67,8 @@ export default function EstimateVsActualPanel({ issues }: { issues: Issue[] }) {
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat label="Estimated Hours" value={formatHours(totals.estimated)} />
         <Stat label="Actual Hours" value={formatHours(totals.actual)} />
-        <Stat label="Variance" value={formatHours(variance)} />
-        <Stat label="Variance %" value={variancePercent === null ? "—" : `${variancePercent.toFixed(1)}%`} />
+        <Stat label="Variance" value={`${formatHours(Math.abs(variance)) || "0"} h ${variance < 0 ? "under" : variance > 0 ? "over" : "on"} estimate`} />
+        <Stat label="Variance %" value={variancePercent === null ? "—" : `${Math.abs(variancePercent).toFixed(0)}% ${variance < 0 ? "under" : variance > 0 ? "over" : ""}`.trim()} />
       </div>
       <div style={{ width: "100%", height: Math.max(200, rows.chartData.length * 40) }}>
         <ResponsiveContainer>
@@ -84,7 +84,7 @@ export default function EstimateVsActualPanel({ issues }: { issues: Issue[] }) {
         </ResponsiveContainer>
       </div>
       {rows.withEstimate.length === 0 && (
-        <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">No tickets with both estimated and actual hours.</p>
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">No tickets with both estimated and actual hours.</p>
       )}
     </div>
   );
@@ -93,8 +93,8 @@ export default function EstimateVsActualPanel({ issues }: { issues: Issue[] }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-center dark:border-slate-700 dark:bg-slate-800">
-      <div className="text-[11px] uppercase text-slate-500 dark:text-slate-400">{label}</div>
-      <div className="text-lg font-semibold text-slate-800 dark:text-slate-100">{value}</div>
+      <div className="text-xs font-medium text-slate-600 dark:text-slate-400">{label}</div>
+      <div className="text-lg font-semibold text-slate-900 dark:text-slate-50">{value}</div>
     </div>
   );
 }

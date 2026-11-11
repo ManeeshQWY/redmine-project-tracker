@@ -110,12 +110,12 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
 
   if (timeEntries === null) {
     return (
-      <div className="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-700 dark:bg-slate-900">
+      <div className="rounded-lg border border-dashed border-ctl bg-white p-10 text-center dark:border-slate-700 dark:bg-slate-900">
         <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
           Shows total hours logged by <span className="font-medium">every user who logged time</span> on this
           project&apos;s issues — not just the person an issue is assigned to.
         </p>
-        <p className="mb-4 text-xs text-slate-400 dark:text-slate-500">
+        <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
           {projectIdentifier === ALL_PROJECTS
             ? "This covers every time entry across the whole instance and can take a minute or more to load."
             : "This can take a few seconds to load, depending on how many time entries the project has."}
@@ -131,7 +131,7 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
         {loading && (
           <button
             onClick={cancelLoad}
-            className="ml-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            className="ml-2 rounded-md border border-ctl bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             Cancel
           </button>
@@ -200,7 +200,7 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
   }
 
   const selectCls =
-    "rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
+    "rounded-md border border-ctl bg-white px-2 py-1.5 text-xs text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
 
   return (
     <div className="space-y-4">
@@ -209,7 +209,7 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Time Spent by User</h3>
-            <p className="text-xs text-slate-400 dark:text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {rootTicketId !== null
                 ? `${monthFilteredEntries.length.toLocaleString()} entries on #${rootTicketId}${childCount > 0 ? ` + ${childCount} child ticket${childCount === 1 ? "" : "s"}` : ""} · ${formatHours(grandTotal)}h total`
                 : `${monthFilteredEntries.length.toLocaleString()} time entries · ${formatHours(grandTotal)}h total`}
@@ -221,21 +221,21 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
             <button
               onClick={handleExport}
               disabled={exporting || rows.length === 0}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="rounded-md border border-ctl bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
             >
               {exporting ? "Exporting…" : "Export to Excel"}
             </button>
             <button
               onClick={() => load(true)}
               disabled={loading}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="rounded-md border border-ctl bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
             >
               {loading ? "Refreshing…" : "Refresh Time Data"}
             </button>
             {loading && (
               <button
                 onClick={cancelLoad}
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                className="rounded-md border border-ctl bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               >
                 Cancel
               </button>
@@ -244,7 +244,7 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
         </div>
 
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <label className="text-[11px] font-medium text-slate-500 dark:text-slate-400" htmlFor="time-ticket-filter">
+          <label className="text-xs font-medium text-slate-500 dark:text-slate-400" htmlFor="time-ticket-filter">
             Ticket ID
           </label>
           <input
@@ -254,18 +254,18 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
             value={ticketIdFilter}
             onChange={(e) => setTicketIdFilter(e.target.value)}
             placeholder="e.g. 25132"
-            className="w-32 rounded-md border border-slate-300 px-2 py-1 text-xs shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            className="w-32 rounded-md border border-ctl px-2 py-1 text-xs shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           />
           {trimmedFilter && (
             <button
               onClick={() => setTicketIdFilter("")}
-              className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
             >
               Clear
             </button>
           )}
 
-          <label className="ml-2 text-[11px] font-medium text-slate-500 dark:text-slate-400" htmlFor="time-month-filter">
+          <label className="ml-2 text-xs font-medium text-slate-500 dark:text-slate-400" htmlFor="time-month-filter">
             Month
           </label>
           <select id="time-month-filter" className={selectCls} value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)}>
@@ -276,7 +276,7 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
           </select>
 
           {rootTicketId !== null && (
-            <span className="text-[11px] text-slate-400 dark:text-slate-500">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               {childCount > 0
                 ? `Includes time logged against #${rootTicketId} and all ${childCount} of its child/subtask ticket${childCount === 1 ? "" : "s"}.`
                 : `#${rootTicketId} has no child tickets — showing entries logged directly against it.`}
@@ -286,7 +286,11 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
 
         {rootTicketId === null && (
           <p
-            className={`mb-3 text-xs ${noTicketEntries.length > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-400 dark:text-slate-500"}`}
+            className={`mb-3 text-sm ${
+              noTicketEntries.length > 0
+                ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+                : "text-slate-500 dark:text-slate-400"
+            }`}
           >
             {noTicketEntries.length > 0
               ? `${noTicketEntries.length.toLocaleString()} entr${noTicketEntries.length === 1 ? "y" : "ies"} (${formatHours(noTicketHours)}h, ${noTicketShare.toFixed(1)}% of the hours shown) logged without a ticket — see "Time Logged Without a Ticket" below.`
@@ -298,10 +302,10 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
           <table className="w-full text-left text-xs">
             <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               <tr>
-                <th className="px-2 py-1.5">User</th>
-                <th className="px-2 py-1.5 text-right">Total Hours</th>
-                <th className="px-2 py-1.5 text-right">Entries</th>
-                <th className="px-2 py-1.5">By Activity</th>
+                <th scope="col" className="px-2 py-1.5">User</th>
+                <th scope="col" className="px-2 py-1.5 text-right">Total Hours</th>
+                <th scope="col" className="px-2 py-1.5 text-right">Entries</th>
+                <th scope="col" className="px-2 py-1.5">By Activity</th>
               </tr>
             </thead>
             <tbody>
@@ -317,7 +321,7 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-2 py-6 text-center text-slate-400 dark:text-slate-500">
+                  <td colSpan={4} className="px-2 py-6 text-center text-slate-500 dark:text-slate-400">
                     {monthFilter
                       ? "No time entries logged in this month."
                       : rootTicketId !== null
@@ -333,7 +337,7 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
 
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <h3 className="mb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">Monthly Breakdown</h3>
-        <p className="mb-3 text-[11px] text-slate-400 dark:text-slate-500">
+        <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
           Hours logged per user, by month{rootTicketId !== null ? ` (scoped to #${rootTicketId}${childCount > 0 ? " + its child tickets" : ""})` : ""} —
           always shows every month, regardless of the Month filter above.
         </p>
@@ -341,11 +345,11 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
           <table className="w-full text-left text-xs">
             <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               <tr>
-                <th className="px-2 py-1.5">Month</th>
+                <th scope="col" className="px-2 py-1.5">Month</th>
                 {monthBreakdown.users.map((user) => (
-                  <th key={user} className="px-2 py-1.5 text-right">{user}</th>
+                  <th scope="col" key={user} className="px-2 py-1.5 text-right">{user}</th>
                 ))}
-                <th className="px-2 py-1.5 text-right font-semibold">Total</th>
+                <th scope="col" className="px-2 py-1.5 text-right font-semibold">Total</th>
               </tr>
             </thead>
             <tbody>
@@ -360,7 +364,7 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
               ))}
               {monthBreakdown.rows.length === 0 && (
                 <tr>
-                  <td colSpan={monthBreakdown.users.length + 2} className="px-2 py-6 text-center text-slate-400 dark:text-slate-500">
+                  <td colSpan={monthBreakdown.users.length + 2} className="px-2 py-6 text-center text-slate-500 dark:text-slate-400">
                     No time entries in the current view.
                   </td>
                 </tr>
@@ -373,19 +377,19 @@ export default function TimeSpentByUserPanel({ projectIdentifier, projectLabel, 
       {rootTicketId === null && noTicketEntries.length > 0 && (
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <h3 className="mb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">Time Logged Without a Ticket</h3>
-          <p className="mb-3 text-[11px] text-slate-400 dark:text-slate-500">
+          <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
             Entries logged directly against the project rather than a ticket{monthFilter ? " (for the selected month)" : ""}, newest first.
           </p>
           <div className="max-h-[480px] overflow-auto">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                 <tr>
-                  <th className="px-2 py-1.5">Date</th>
-                  <th className="px-2 py-1.5">User</th>
-                  <th className="px-2 py-1.5">Project</th>
-                  <th className="px-2 py-1.5">Activity</th>
-                  <th className="px-2 py-1.5 text-right">Hours</th>
-                  <th className="px-2 py-1.5">Comment</th>
+                  <th scope="col" className="px-2 py-1.5">Date</th>
+                  <th scope="col" className="px-2 py-1.5">User</th>
+                  <th scope="col" className="px-2 py-1.5">Project</th>
+                  <th scope="col" className="px-2 py-1.5">Activity</th>
+                  <th scope="col" className="px-2 py-1.5 text-right">Hours</th>
+                  <th scope="col" className="px-2 py-1.5">Comment</th>
                 </tr>
               </thead>
               <tbody>

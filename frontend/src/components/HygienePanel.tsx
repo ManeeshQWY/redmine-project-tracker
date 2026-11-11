@@ -90,8 +90,13 @@ export default function HygienePanel({ projectIdentifier, issues, redmineBaseUrl
                   </button>
                 </td>
                 <td className="w-48 px-2 py-2">
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" aria-hidden>
-                    <div className="h-full rounded-full bg-brand-600" style={{ width: `${c.percent ?? 0}%` }} />
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" aria-hidden>
+                    <div
+                      className={`h-full min-w-[4px] rounded-full ${
+                        (c.percent ?? 0) >= 90 ? "bg-emerald-600 dark:bg-emerald-500" : (c.percent ?? 0) >= 60 ? "bg-amber-500" : "bg-rose-600 dark:bg-rose-400"
+                      }`}
+                      style={{ width: `${c.percent ?? 0}%` }}
+                    />
                   </div>
                 </td>
                 <td className="w-16 px-2 py-2 text-right font-medium tabular-nums">{pct(c.percent)}</td>
@@ -144,7 +149,7 @@ export default function HygienePanel({ projectIdentifier, issues, redmineBaseUrl
             })}
             {!entries && (
               <tr className="border-t border-slate-100 dark:border-slate-800">
-                <td colSpan={3} className="px-2 py-2 text-slate-400 dark:text-slate-500">
+                <td colSpan={3} className="px-2 py-2 text-slate-500 dark:text-slate-400">
                   Time-entry checks (not linked to a ticket, no comment) appear once this project&apos;s time entries have loaded.
                 </td>
               </tr>
@@ -157,16 +162,16 @@ export default function HygienePanel({ projectIdentifier, issues, redmineBaseUrl
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
             {report.checks.find((c) => c.id === open)?.label ?? report.problems.find((p) => p.id === open)?.label}{" "}
-            <span className="font-normal text-slate-400">({list.length.toLocaleString()} tickets)</span>
+            <span className="font-normal text-slate-500 dark:text-slate-400">({list.length.toLocaleString()} tickets)</span>
           </h3>
           <div className="max-h-80 overflow-auto">
-            <table className="w-full text-left text-[11px]">
+            <table className="w-full text-left text-xs">
               <tbody>
                 {list.slice(0, MAX_SHOWN).map((i) => (
                   <tr key={i.id} className="border-t border-slate-100 dark:border-slate-800">
                     <td className="w-16 px-2 py-1"><TicketLink id={i.id} redmineBaseUrl={redmineBaseUrl} /></td>
                     <td className="px-2 py-1">{i.subject}</td>
-                    <td className="w-24 px-2 py-1 text-slate-400 dark:text-slate-500">{i.tracker}</td>
+                    <td className="w-24 px-2 py-1 text-slate-500 dark:text-slate-400">{i.tracker}</td>
                     <td className="w-32 px-2 py-1 text-slate-500 dark:text-slate-400">{i.status}</td>
                     <td className="w-40 px-2 py-1 text-slate-500 dark:text-slate-400">{i.assignedTo ?? "—"}</td>
                   </tr>
@@ -174,7 +179,7 @@ export default function HygienePanel({ projectIdentifier, issues, redmineBaseUrl
               </tbody>
             </table>
             {list.length > MAX_SHOWN && (
-              <p className="py-2 text-center text-[11px] text-slate-400 dark:text-slate-500">
+              <p className="py-2 text-center text-xs text-slate-500 dark:text-slate-400">
                 Showing the first {MAX_SHOWN} of {list.length.toLocaleString()}.
               </p>
             )}
@@ -188,11 +193,11 @@ export default function HygienePanel({ projectIdentifier, issues, redmineBaseUrl
           <table className="w-full text-left text-xs">
             <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               <tr>
-                <th className="px-2 py-1.5">Assignee</th>
-                <th className="px-2 py-1.5 text-right">Open tickets</th>
-                <th className="px-2 py-1.5 text-right">No estimate</th>
-                <th className="px-2 py-1.5 text-right">No due date</th>
-                <th className="px-2 py-1.5 text-right">No target version</th>
+                <th scope="col" className="px-2 py-1.5">Assignee</th>
+                <th scope="col" className="px-2 py-1.5 text-right">Open tickets</th>
+                <th scope="col" className="px-2 py-1.5 text-right">No estimate</th>
+                <th scope="col" className="px-2 py-1.5 text-right">No due date</th>
+                <th scope="col" className="px-2 py-1.5 text-right">No target version</th>
               </tr>
             </thead>
             <tbody>
@@ -207,7 +212,7 @@ export default function HygienePanel({ projectIdentifier, issues, redmineBaseUrl
               ))}
               {report.people.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-2 py-6 text-center text-slate-400 dark:text-slate-500">No open tickets.</td>
+                  <td colSpan={5} className="px-2 py-6 text-center text-slate-500 dark:text-slate-400">No open tickets.</td>
                 </tr>
               )}
             </tbody>

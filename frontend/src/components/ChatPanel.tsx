@@ -95,7 +95,9 @@ export default function ChatPanel({ projectIdentifier, projectLabel, loadWindow 
       <button
         onClick={() => setOpen(true)}
         title="Ask about this project's tickets"
-        className="fixed bottom-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700"
+        aria-label="Ask about this project's tickets"
+        aria-haspopup="dialog"
+        className="fixed bottom-4 right-4 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700"
       >
         <ChatIcon className="h-5 w-5" />
       </button>
@@ -107,11 +109,12 @@ export default function ChatPanel({ projectIdentifier, projectLabel, loadWindow 
       <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Ask about tickets</h3>
-          <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{projectLabel} · read-only</p>
+          <p className="truncate text-xs text-slate-500 dark:text-slate-400">{projectLabel} · read-only</p>
         </div>
         <button
           onClick={() => setOpen(false)}
-          className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+          aria-label="Close chat"
+          className="rounded-md p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
         >
           <CloseIcon className="h-4 w-4" />
         </button>
@@ -119,7 +122,7 @@ export default function ChatPanel({ projectIdentifier, projectLabel, loadWindow 
 
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
         {messages.length === 0 && (
-          <p className="text-xs text-slate-400 dark:text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Ask things like "how many open bugs are there" or "who has the most tickets" — answers are read-only and scoped to
             this project.
           </p>
@@ -137,7 +140,7 @@ export default function ChatPanel({ projectIdentifier, projectLabel, loadWindow 
               {m.suggestedFilter && (
                 <button
                   onClick={() => onApplyFilter(m.suggestedFilter!)}
-                  className="mt-2 block rounded-md bg-brand-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-brand-700"
+                  className="mt-2 block rounded-md bg-brand-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-700"
                 >
                   See full list in Ticket Table →
                 </button>
@@ -160,12 +163,13 @@ export default function ChatPanel({ projectIdentifier, projectLabel, loadWindow 
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Ask a question…"
           disabled={sending}
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          className="flex-1 rounded-lg border border-ctl px-3 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
         <button
           type="submit"
           disabled={sending || !draft.trim()}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+          aria-label="Send"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 dark:disabled:bg-slate-700 dark:disabled:text-slate-400"
         >
           <SendIcon className="h-3.5 w-3.5" />
         </button>
